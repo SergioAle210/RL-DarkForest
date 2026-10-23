@@ -1,0 +1,35 @@
+[project]
+name = "darkforest"
+version = "0.1.0"
+description = "Dark Forest: MARL sobre un POSG con anomalía compartida (CC3092)"
+requires-python = ">=3.10"
+dependencies = [
+    "jax",
+    "flax",
+    "optax",
+    "numpy",
+    "pyyaml",
+    "matplotlib",
+    "networkx",
+    "wandb",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["darkforest*", "train*", "analysis*", "viz*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

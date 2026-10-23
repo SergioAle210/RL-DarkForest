@@ -1,0 +1,39 @@
+# Configuración base; cada config del barrido sobrescribe estos campos.
+env:
+  n_civs: 4            # N in {2, 4, 6, 8}
+  max_steps: 200       # T por episodio
+  max_detections: 4    # M ranuras de detección
+  n_symbols: 4         # K símbolos de transmitir(k)
+  growth: 0.05         # g
+  signal_speed: 0.1    # c (unidades del toro por paso)
+  proj_speed: 0.05     # v_p <= c
+  p_kill: 0.75
+  cost_obs: 0.01       # c_obs
+  cost_tx: 0.02        # c_tx
+  cost_atk: 0.10       # C_atk
+  cost_ref: 0.02       # c_ref
+  costly_signals: false
+  anomaly:
+    lethality: 0.5     # lambda
+    period: 20
+    noise_std: 0.1
+    interfere: false   # extensión J-04
+train:
+  algo: ippo
+  seed: 0
+  n_envs: 1024
+  total_steps: 50_000_000
+  rollout_len: 64
+  lr: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  gru_hidden: 128
+  self_play:
+    rho: 0.3           # prob. de asignar una política pasada
+    snapshot_every: 50 # K iteraciones
+logging:
+  backend: tensorboard  # tensorboard | wandb
+  out_dir: runs

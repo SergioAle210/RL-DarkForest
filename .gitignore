@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+wandb/
+runs/
+results/
+checkpoints/
+*.npz
+*.mp4
+*.gif
+graphify-out/

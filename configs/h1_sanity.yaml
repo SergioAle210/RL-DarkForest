@@ -1,0 +1,8 @@
+# Prueba de cordura H1: lambda = 0, el silencio o el ataque preventivo deben dominar.
+extends: base.yaml
+env:
+  n_civs: 2
+  anomaly:
+    lethality: 0.0
+train:
+  total_steps: 5_000_000
