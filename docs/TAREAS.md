@@ -94,8 +94,22 @@ Los 46 IDs originales se conservan; TODO desglosa sus entregables cuando son ind
 | Validación y commits | G-01, entrega nueva | pytest y ruff ejecutados, pendientes del simulador separados, copia ejecutada en `runs/notebook_checks/` y conventional commits por cambio lógico |
 
 Dimensiones `P/D/F/Qs/Qp`, recursos iniciales, detecciones persistentes y reglas de refugio
-siguen en A-01/A-02. El rechazo físico no cambia automáticamente los YAML del barrido.
-Los notebooks preparados no completan B, C, D ni E.
+quedaban en A-01/A-02 al cerrar fundamentos. Su primera definición operativa y el siguiente
+bloque están en [EPISODIOS.md](EPISODIOS.md) y en la arquitectura. El rechazo físico no cambia
+automáticamente los YAML del barrido. Preparar archivos no completa sus funcionalidades.
+
+### Siguiente entrega: episodios y aprendizaje exploratorio
+
+La integración construye episodios de dos y cuatro civilizaciones, políticas de referencia,
+GRU, recolección recurrente, GAE/PPO, archivos versionados y reproducción con Matplotlib.
+Se ejecuta un presupuesto corto en CPU con `rho=0`. Esto no completa el autojuego C-05,
+los torneos de C-06 ni la evaluación empírica I-03. La variante inicial de C-04 usa secuencias
+completas por rollout, sin minibatches. Las tareas amplias se desglosan en TODO para conservar
+sus pendientes; sus criterios originales siguen vigentes.
+
+Compartimos el código por PR y las corridas fuera de Git. D/E pueden trabajar con episodios
+guardados sin ejecutar entrenamiento. Los comandos y evidencias de integración se registran
+en la guía de episodios; los estados se mantienen exclusivamente en TODO.
 
 ## Fase 1: implementación por frente
 

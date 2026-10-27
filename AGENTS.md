@@ -13,14 +13,18 @@ uv sync --locked --group notebooks
 uv run pytest             # cualquier comando va con `uv run`
 uv run ruff check .       # lint (y `uv run ruff format .` para formatear)
 uv run --group notebooks jupyter lab notebooks/fundamentos.ipynb
+uv run python -m train.ippo --config configs/aprendizaje_dos.yaml
+uv run --group notebooks jupyter lab notebooks/demo.ipynb
 make test                 # pytest
 make lint                 # ruff check + format --check
 make sanity               # entrena la config H1 (lambda = 0)
 make sweep-coarse         # barrido 3x3
 ```
 
-`make sanity` y el ejecutor del barrido requieren el simulador y el entrenamiento futuros.
+`make sanity` y el ejecutor del barrido requieren completar el autojuego y los experimentos.
 `--dry-run` expande combinaciones, pero todavía no valida sus parámetros físicos.
+Los entrenamientos de comprobación usan `aprendizaje_dos.yaml` y `aprendizaje_cuatro.yaml`,
+con `rho=0`. El contrato operativo y la entrega al equipo están en `docs/EPISODIOS.md`.
 
 ## Mapa de módulos y contratos
 
@@ -31,7 +35,7 @@ make sweep-coarse         # barrido 3x3
 | `darkforest/env.py` | `reset(key)` / `step(key, state, actions)` puros | Sin efectos secundarios; compatible con `jit`/`vmap` |
 | `darkforest/anomaly.py` | θ, proyecciones `h_i(θ)`, estallidos | θ nunca identificable con una proyección |
 | `darkforest/policies.py` | Protocolo `Policy` (`init_carry`, `act`) | Toda política (red, arquetipo, aleatoria) lo implementa |
-| `darkforest/archetypes.py` | Heurísticas y modelo nulo | Solo dependen de `Policy` y `Obs` |
+| `darkforest/archetypes.py` | Heurísticas y modelo nulo | Usan `Obs`, carry y configuración del catálogo; nunca `EnvState` |
 | `darkforest/networks.py` | Actor-crítico GRU | Sin lógica de entorno |
 | `train/` | IPPO, población de autojuego, barrido | No importa nada de `analysis/` ni `viz/` |
 | `analysis/` | Métricas, replicador, diagrama de fases | Lee trayectorias/resultados en disco, no corre el entorno en vivo |

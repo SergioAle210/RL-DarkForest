@@ -1,8 +1,9 @@
 # Arquitectura, interfaces y archivos del proyecto
 
-Este documento describe las interfaces existentes y los acuerdos para completarlas. **Los
-formatos de persistencia y el flujo integrado aquí descritos están pendientes de
-implementación.** El avance se registra en [TODO.md](TODO.md); los criterios y dependencias
+Este documento describe las interfaces existentes y los acuerdos para completarlas. El
+formato de episodios v1, la simulación, IPPO inicial y la reproducción ya tienen una primera
+implementación; el autojuego y los experimentos completos siguen pendientes.
+El avance se registra en [TODO.md](TODO.md); los criterios y dependencias
 por ID están en [TAREAS.md](TAREAS.md).
 
 La especificación científica está en [PROPUESTA.md](PROPUESTA.md) y las reglas de desarrollo
@@ -99,8 +100,10 @@ debe ajustarse a esta división.
 | `reward_fn(resources_t, resources_t1, alive_t)` | Recompensa por agente | Diferencia de `log1p`; cero para agentes ya eliminados |
 
 `actions`, `reward` y `done` tienen forma `(N,)`. `done` indica eliminación o final del
-episodio para cada civilización. El orden declarado del paso es acciones → señales y
-proyectiles → detección → anomalía → recompensa. La implementación aún está pendiente.
+episodio para cada civilización. El orden del paso es acciones → propagación y detección →
+impactos → anomalía → recompensa. Si coinciden impacto y anomalía, registramos la muerte
+como ataque para no contar dos veces la causa. El final de tiempo es un corte para el
+bootstrap del entrenamiento; la muerte es una terminación real.
 
 Hay **siete familias** en `ACTIONS`, pero el espacio discreto incluye los argumentos de
 `transmitir(k)` y `atacar(j)`:
@@ -125,7 +128,8 @@ Las acciones son arrays enteros; no hay una clase `Action` en `types.py` ni un c
 `decode_action` acepta escalares o arrays enteros y devuelve arrays de familia y argumento
 con la misma forma. Los IDs fuera de rango devuelven `(-1, -1)` y las entradas no enteras
 producen `TypeError`. La decodificación se comprueba en ejecución normal, `jit` y `vmap`.
-Este centinela no define aún qué efecto tendrá una acción inválida dentro de `step`.
+En `step`, acciones inválidas, inasequibles o ataques sin contacto válido son inactivas:
+no consumen recursos ni disparan efectos. Compartir exige haber medido antes.
 
 ### Estado, observación y diagnósticos
 
@@ -137,8 +141,42 @@ Este centinela no define aún qué efecto tendrá una acción inválida dentro d
 
 Las estructuras ya son pytrees inmutables de Flax. Se conservan formas estáticas y máscaras
 de validez. `N` es el número de civilizaciones, `M` las ranuras de detección y `K` los símbolos.
-Quedan por cerrar en A-01 las dimensiones de θ (`P`), medición (`D`), detección (`F`), colas
-(`Qs`, `Qp`) y la persistencia de detecciones/historial necesaria para ataques y métricas.
+La versión operativa usa `P=5`, `D=5` y `F=10`. Las colas se dimensionan a partir de la
+velocidad y de la máxima distancia del toro; no sobrescriben señales o proyectiles en vuelo.
+
+### Decisiones físicas de la primera implementación
+
+Estas decisiones concretan aspectos que el esqueleto dejaba abiertos. Se mantienen visibles
+para revisión científica del equipo; no se presentan como resultados de las hipótesis.
+
+| Aspecto | Regla de la versión inicial |
+|---|---|
+| Recursos | `initial_resources=1`; crecimiento multiplicativo; costos absolutos; al morir pasan a cero |
+| Detección | `p_det(e,d) = detection_e * exp(-detection_decay*d)`; baja 0.05, alta 0.9 y decaimiento 1 |
+| Emisiones | Un frente por civilización viva y turno; crecer, transmitir y compartir ponen emisión alta; ocultarse la pone baja |
+| Canal | Las emisiones pasivas revelan contacto sin mensaje; `channel_enabled=false` elimina contenido pero conserva el fenómeno físico |
+| Cola de señales | `N * (ceil(sqrt(0.5)/signal_speed) + 1)`; una recepción por cruce de frente |
+| Cola de proyectiles | La misma fórmula con `proj_speed`; intentos fallidos se consumen al llegar |
+| Contactos | Última detección por emisor; hasta M más recientes; TTL de 20 turnos desde emisión; último mensaje persistente |
+| Rumbo y distancia | Desplazamiento mínimo exacto del toro después de detectar; el ruido se aplica a mediciones de anomalía |
+| Refugio | Protege el paso siguiente por defecto; `refuge_duration=1`; se consume al estallar o al vencer |
+| Anomalía | θ = fase, periodo, centro x/y y radio; periodo configurado, fase/centro aleatorios, radio 0.25 |
+| Extensiones | Señales costosas, interferencia y barajado todavía producen un error explícito al iniciar |
+
+La proyección es `z = (cos(φ)*fase + sin(φ)*periodo, cos(φ)*cx + sin(φ)*cy)`.
+Una dirección deja el centro indeterminado; dos direcciones linealmente independientes lo
+recuperan sin ruido. Direcciones paralelas no bastan. El radio es un parámetro conocido de
+configuración. Evaluar el valor estratégico de combinar mediciones queda para H2.
+
+La medición almacenada es `[válida, cos(φ), sin(φ), z0, z1]`; su bandera distingue ausencia
+de una medición de valor cero. Compartimos esa medición completa. El contenido de señal
+es `[tipo, medición...]`: tipo `-1` para emisión pasiva, `0..K-1` para símbolos y `K` para
+medición compartida. La detección contiene `[dx, dy, distancia, contenido..., antigüedad]`.
+La antigüedad corresponde al mensaje retenido, o a la detección si aún no llegó un mensaje.
+
+`EnvState` incorpora emisión de cada señal, tiempos y contenido de contactos, vencimiento
+del refugio e historial de ataques. `StepInfo` añade familias ejecutadas, recepciones y
+lanzamientos. Esos diagnósticos se guardan para análisis; no se concatenan a `Obs`.
 
 ### Políticas y red
 
@@ -149,8 +187,8 @@ Policy.act(key, carry, obs) -> (nuevo_carry, acciones)
 ActorCriticGRU(carry, obs_flat, agent_id) -> (nuevo_carry, logits, valor)
 ```
 
-Una política sin memoria puede usar `None` como carry. B implementa y prueba el adaptador
-del actor-crítico a `Policy`, porque la red por sí sola no implementa ese protocolo. El
+Una política sin memoria usa `None` como carry. `NetworkPolicy` adapta el actor-crítico a
+`Policy`; la red por sí sola no implementa ese protocolo. El
 entrenamiento conserva logits, valores, probabilidades y carry necesarios para PPO; las
 heurísticas no necesitan saber cómo se entrena la red. Los agentes muertos y el reinicio de
 episodios requieren máscaras y reinicio de carry verificados en B-04/C-04.
@@ -161,8 +199,8 @@ se mantiene exclusivamente como `log(1+r_{t+1}) - log(1+r_t)`, sin bonos por est
 
 ## 3. Persistencia acordada
 
-Esta distribución se implementará en C-01/C-02; las carpetas no se crean hasta que exista
-un productor real de sus archivos.
+`train.episodes` y `train.ippo` producen esta distribución. No se crean carpetas con
+resultados ficticios. Las corridas existentes se rechazan para evitar sobrescrituras.
 
 ```text
 runs/
@@ -186,17 +224,19 @@ runs/
   explícita o una identidad nueva; no se sobrescriben resultados silenciosamente.
 - `metadata.json` registra versión del formato, config ID, seed, revisión Git y estado de
   cambios locales, versiones relevantes, hardware, presupuesto y tipo de ejecución
-  (`sintetica`, `exploratoria` o `final`).
+  (`mode`, inicialmente exploratorio) y la bandera `synthetic`.
 - Guardar cada configuración resuelta hace reproducibles los overrides. La ruta YAML original
-  no basta: actualmente la CLI pasa `args.config` como nombre y `run_dir` lo concatena; C-02
-  debe normalizar esa identidad y evitar subrutas accidentales como `configs/base.yaml/0`.
+  no basta: `run_dir` normaliza el nombre y añade un hash de la configuración resuelta,
+  excluyendo seed y directorio de salida. La seed ocupa el siguiente nivel.
 - Los checkpoints guardan también el estado necesario para reanudar de forma reproducible,
   incluido PRNG y población cuando corresponda. No basta con los pesos de la red.
 
 ### Contrato mínimo de episodios
 
-C-01 versionará los nombres exactos de claves y publicará un fixture compartido antes de que
-D/E implementen lectores. El contrato debe cubrir:
+El formato v1 usa nombres de campos de `EnvState`, prefijos `obs_` e `info_`, y claves
+`actions`, `rewards`, `done`. `darkforest.trajectories.load_episode` es el lector compartido.
+Los lectores pueden trabajar con episodios reales guardados; un fixture científico estable
+para los siguientes análisis sigue siendo parte de C-01. El contrato cubre:
 
 | Datos | Necesidad |
 |---|---|
@@ -220,8 +260,8 @@ carry; no obligan a exportar todos los rollouts. C guardará episodios de evalua
 para métricas y demo. El estado completo guardado es solo diagnóstico y no se concatena a
 `Obs` ni se utiliza como entrada encubierta de las políticas.
 
-`results.json` identificará config, seed, episodios evaluados, políticas, métricas, régimen
-y versión del protocolo de clasificación. D define ese protocolo antes de observar resultados
+`analysis.metrics` produce `results.json` con procedencia y métricas básicas. El régimen y
+su protocolo de clasificación aún no están implementados. D define ese protocolo antes de observar resultados
 (D-04); un dato ausente o una frontera no detectada no se convierten en cero ni en éxito.
 
 ### Agregados e imágenes
@@ -238,11 +278,11 @@ ni resultados ficticios en esta iteración.
 
 ## 4. UI y notebooks
 
-`notebooks/fundamentos.ipynb` recorre configuración, acciones y observaciones sintéticas con
-máscaras; no ejecuta episodios. `entrenamiento.ipynb`, `resultados.ipynb` y `demo.ipynb`
-contienen únicamente su propósito y estado pendiente. Son espacios preparados, no
-implementaciones de entrenamiento o visualización. Las dimensiones ilustrativas usadas en
-fundamentos no fijan las dimensiones físicas aún abiertas en A-01.
+`notebooks/fundamentos.ipynb` recorre configuración, acciones y observaciones sintéticas.
+`entrenamiento.ipynb` entrena o consulta un checkpoint existente y muestra pérdidas y
+evaluaciones. `demo.ipynb` reproduce episodios guardados sin llamar al entorno.
+`resultados.ipynb` queda preparado para el análisis experimental posterior. Las dimensiones
+ilustrativas de fundamentos no sustituyen el formato físico documentado arriba.
 
 JupyterLab, ipykernel y nbconvert están separados en el grupo `notebooks`. La copia ejecutada
 de verificación se guarda en `runs/notebook_checks/`; el notebook versionado no tiene salidas.
@@ -267,12 +307,12 @@ que la capa artística permanece como extensión.
 | Hallazgo de la revisión | Resolución planificada |
 |---|---|
 | Preparación de herramientas por equipo | G-01: reproducir la instalación y las comprobaciones de la guía en cada máquina |
-| Dimensiones, capacidad de colas, recursos iniciales y reglas de acciones inválidas sin cerrar | A-01/A-02: documentar y configurar antes de integrar consumidores |
+| Decisiones físicas concretadas en la versión inicial | A-01/A-02: revisar su adecuación científica antes de los experimentos finales |
 | `proj_speed=0.05`, pero el barrido incluye `signal_speed=0.01` y `0.0316` | A-02/D-03: validar todas las combinaciones y corregir el diseño físico antes de entrenar |
-| TensorBoard predeterminado sin dependencia declarada | C-02: añadir/verificar el escritor elegido en una implementación posterior |
+| Reanudación de entrenamiento por CLI y backend W&B | C-02: completar estas rutas; TensorBoard local y checkpoint para inferencia ya funcionan |
 | `payoff_matrix(env_cfg, ...)` sugiere simulación dentro de análisis | C-06/D-05: evaluar en `train/` y calcular pagos en `analysis/` desde archivos |
 | `costly_signals` sin mecanismo definido | A-06/D-07: especificar y probar costo/verificabilidad antes de H3 |
-| Invariantes aún marcados con `skip` o `xfail` | A-05/D-02: aserciones reales y retirada de marcadores al implementar; no cuentan como funcionalidades verificadas |
+| CI y protocolo empírico H1 | D-02/D-04: verificar CI y definir comparadores; los invariantes locales ya tienen aserciones reales |
 | Cinco seeds en el YAML también para el grid grueso | D-03: selección explícita de tres para exploración; ≥5 para resultados reportados |
 
 Antes de entrenar se requieren recursos no negativos, muertos inactivos, velocidad correcta
@@ -284,6 +324,6 @@ La prueba de integración I-01 recorre simulación → guardado → carga → m�
 H1 es una evaluación empírica posterior; una ejecución sin errores no confirma la hipótesis.
 Los resultados inesperados se investigan sin cambiar la recompensa para imponer estrategias.
 
-Esta iteración implementa validación, decodificación y pruebas de fundamentos; prepara
-archivos para los demás frentes. La dinámica física, las políticas, la red recurrente, la
-persistencia, el entrenamiento y la reproducción visual se implementarán después.
+La primera ruta integrada y sus límites se describen en [EPISODIOS.md](EPISODIOS.md).
+IPPO inicial usa `rho=0`, secuencias recurrentes completas y varias épocas por rollout.
+Autojuego ficticio, torneos, barridos y clasificación científica siguen en las tareas futuras.

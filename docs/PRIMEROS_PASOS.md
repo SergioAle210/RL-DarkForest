@@ -1,5 +1,9 @@
 # Primera iteración: fundamentos de Sergio
 
+Este documento conserva el alcance y las comprobaciones de la entrega de fundamentos.
+Continuamos con episodios y aprendizaje en [EPISODIOS.md](EPISODIOS.md); allí están los
+comandos actuales de entrenamiento, reproducción y entrega al equipo.
+
 Esta entrega permite comprobar la configuración y el contrato de acciones antes de
 construir el simulador. Se conservaron las interfaces y estructuras existentes para que
 entorno, políticas, entrenamiento, análisis y visualización puedan compartirlas.

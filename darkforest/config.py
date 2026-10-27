@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses as dc
 from copy import deepcopy
-from math import isfinite
+from math import ceil, isfinite, sqrt
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +57,7 @@ class AnomalyConfig:
     period: int = 20
     noise_std: float = 0.1
     interfere: bool = False  # extensión J-04
+    radius: float = 0.25
 
     def __post_init__(self) -> None:
         """Valida los parámetros de la anomalía."""
@@ -64,6 +65,7 @@ class AnomalyConfig:
         _integer("anomaly.period", self.period)
         _number("anomaly.noise_std", self.noise_std)
         _require_type("anomaly.interfere", self.interfere, bool)
+        _number("anomaly.radius", self.radius, maximum=sqrt(0.5), positive=True)
 
 
 @dc.dataclass(frozen=True)
@@ -84,6 +86,13 @@ class EnvConfig:
     channel_enabled: bool = True  # False = ablación del canal
     shuffle_messages: bool = False  # ablación: barajar mensajes
     anomaly: AnomalyConfig = AnomalyConfig()
+    initial_resources: float = 1.0
+    detection_low: float = 0.05
+    detection_high: float = 0.9
+    detection_decay: float = 1.0
+    detection_ttl: int = 20
+    refuge_duration: int = 1
+    collision_tolerance: float = 1e-5
 
     def __post_init__(self) -> None:
         """Valida conteos, costes y velocidades del entorno."""
@@ -102,11 +111,30 @@ class EnvConfig:
         for name in ("costly_signals", "channel_enabled", "shuffle_messages"):
             _require_type(f"env.{name}", getattr(self, name), bool)
         _require_type("env.anomaly", self.anomaly, AnomalyConfig)
+        _number("env.initial_resources", self.initial_resources, positive=True)
+        _number("env.collision_tolerance", self.collision_tolerance, positive=True)
+        _number("env.detection_decay", self.detection_decay)
+        _number("env.detection_low", self.detection_low, maximum=1)
+        _number("env.detection_high", self.detection_high, maximum=1)
+        if self.detection_low > self.detection_high:
+            raise ValueError("env.detection_low: no debe superar detection_high")
+        _integer("env.detection_ttl", self.detection_ttl)
+        _integer("env.refuge_duration", self.refuge_duration)
 
     @property
     def n_discrete(self) -> int:
         """Cuenta acciones simples y opciones parametrizadas."""
         return 5 + self.n_symbols + self.max_detections
+
+    @property
+    def signal_slots(self) -> int:
+        """Reserva una emisión por agente y turno hasta cruzar el toro."""
+        return self.n_civs * (ceil(sqrt(0.5) / self.signal_speed) + 1)
+
+    @property
+    def projectile_slots(self) -> int:
+        """Reserva un lanzamiento por agente y turno hasta alcanzar su destino."""
+        return self.n_civs * (ceil(sqrt(0.5) / self.proj_speed) + 1)
 
 
 @dc.dataclass(frozen=True)
@@ -135,6 +163,8 @@ class TrainConfig:
     vf_coef: float = 0.5
     gru_hidden: int = 128
     self_play: SelfPlayConfig = SelfPlayConfig()
+    update_epochs: int = 4
+    max_grad_norm: float = 0.5
 
     def __post_init__(self) -> None:
         """Valida el entrenamiento y el dominio de seeds de 32 bits."""
@@ -149,6 +179,8 @@ class TrainConfig:
         for name in ("ent_coef", "vf_coef"):
             _number(f"train.{name}", getattr(self, name))
         _require_type("train.self_play", self.self_play, SelfPlayConfig)
+        _integer("train.update_epochs", self.update_epochs)
+        _number("train.max_grad_norm", self.max_grad_norm, positive=True)
 
 
 @dc.dataclass(frozen=True)
