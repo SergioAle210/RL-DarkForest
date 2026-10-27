@@ -3,7 +3,7 @@
 Guía para agentes de código (Claude Code, Codex, etc.) y para humanos. `CLAUDE.md` apunta a este archivo.
 
 ## Qué es esto
-MARL sobre un POSG en JAX. Especificación completa en `PROPUESTA.md`. Hipótesis H1–H5 en la sección 4.
+MARL sobre un POSG en JAX. Especificación completa en `docs/PROPUESTA.md`. Hipótesis H1–H5 en la sección 4.
 
 ## Comandos
 ```bash

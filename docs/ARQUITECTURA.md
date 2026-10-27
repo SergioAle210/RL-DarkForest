@@ -2,9 +2,9 @@
 
 Este documento describe las interfaces existentes y los acuerdos para completarlas. **Los
 formatos de persistencia y el flujo integrado aquí descritos están pendientes de
-implementación.** Su avance se sigue por ID en [TAREAS.md](../TAREAS.md).
+implementación.** Su avance se sigue por ID en [TAREAS.md](TAREAS.md).
 
-La especificación científica está en [PROPUESTA.md](../PROPUESTA.md) y las reglas de desarrollo
+La especificación científica está en [PROPUESTA.md](PROPUESTA.md) y las reglas de desarrollo
 en [AGENTS.md](../AGENTS.md). Presentación: **9 al 13 de noviembre de 2026**; cierre: **8 de
 noviembre**. El calendario operativo vive únicamente en TAREAS.
 

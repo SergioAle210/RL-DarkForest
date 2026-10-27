@@ -8,9 +8,9 @@ estocástico parcialmente observable (POSG) en JAX.
 
 ## Por dónde empezar
 
-1. Leer [PROPUESTA.md](PROPUESTA.md): problema, entorno, hipótesis H1–H5 y metodología,
+1. Leer [PROPUESTA.md](docs/PROPUESTA.md): problema, entorno, hipótesis H1–H5 y metodología,
    transcritos del PDF con las fórmulas y tablas restauradas.
-2. Consultar [TAREAS.md](TAREAS.md): estado real, reparto entre cinco personas, dependencias,
+2. Consultar [TAREAS.md](docs/TAREAS.md): estado real, reparto entre cinco personas, dependencias,
    criterios de aceptación y calendario operativo actualizado.
 3. Revisar [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): contratos de módulos, trayectorias,
    imágenes, checkpoints, notebooks y demo.

@@ -3,8 +3,8 @@
 **Presentación: 9 al 13 de noviembre de 2026. Cierre de materiales: 8 de noviembre.**
 
 Este es el calendario operativo vigente; sustituye el cronograma histórico de la sección 7
-de [PROPUESTA.md](PROPUESTA.md). Las reglas están en [AGENTS.md](AGENTS.md) y los contratos
-técnicos en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+de [PROPUESTA.md](PROPUESTA.md). Las reglas están en [AGENTS.md](../AGENTS.md) y los contratos
+técnicos en [docs/ARQUITECTURA.md](ARQUITECTURA.md).
 
 ## Estado de partida: 26 de octubre de 2026
 
