@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 import jax
+import jax.numpy as jnp
 
 from darkforest.types import Obs
 
@@ -28,11 +29,15 @@ class Policy(Protocol):
 class RandomPolicy:
     """Modelo nulo: acción uniforme sobre el espacio discreto."""
 
-    def __init__(self, n_discrete: int):
+    def __init__(self, n_discrete: int) -> None:
+        """Conserva el tamaño del catálogo parametrizado."""
         self.n_discrete = n_discrete
 
     def init_carry(self, n_agents: int) -> Carry:
+        """La política aleatoria no necesita memoria."""
         return None
 
     def act(self, key: jax.Array, carry: Carry, obs: Obs) -> tuple[Carry, jax.Array]:
-        raise NotImplementedError
+        """Muestrea acciones independientes y deja inactivos a los eliminados."""
+        actions = jax.random.randint(key, obs.alive.shape, 0, self.n_discrete)
+        return carry, jnp.where(obs.alive, actions, 1)

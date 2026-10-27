@@ -30,6 +30,12 @@ class EnvState:
     prj_target: Array  # (Qp, 2) posición objetivo
     prj_t: Array  # (Qp,) int
     prj_valid: Array  # (Qp,) bool
+    sig_emission: Array | None = None
+    contact_t: Array | None = None  # (N, N), -1 si aún no hubo detección
+    contact_content: Array | None = None  # (N, N, 6), último mensaje recibido
+    message_t: Array | None = None
+    refuge_until: Array | None = None
+    has_attacked: Array | None = None
 
 
 @struct.dataclass
@@ -54,3 +60,6 @@ class StepInfo:
     preventive_attacks: Array  # () ataques contra quien nunca atacó
     shelters_correct: Array  # () refugios acertados en este estallido
     bursts: Array  # () 1 si hubo estallido
+    executed_kind: Array | None = None  # (N,), -1 si no se pudo ejecutar
+    receptions: Array | None = None  # (N, N), receptor y emisor
+    launches: Array | None = None  # (N,)

@@ -358,3 +358,34 @@ def test_grid_expansion():
     """El barrido conserva el producto cartesiano de parámetros."""
     cells = expand_grid({"a": [1, 2], "b": [3, 4, 5]})
     assert len(cells) == 6
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("initial_resources", 0),
+        ("detection_low", -0.1),
+        ("detection_high", 1.1),
+        ("detection_decay", -1),
+        ("detection_ttl", 0),
+        ("refuge_duration", 0),
+        ("collision_tolerance", 0),
+    ],
+)
+def test_physical_parameters_reject_invalid_values(field, value):
+    """Los parámetros de la primera simulación se validan al construirlos."""
+    with pytest.raises(ValueError, match=field):
+        EnvConfig(**{field: value})
+
+
+def test_signal_queue_capacity_covers_the_longest_flight():
+    """La cola no puede sobrescribir señales que todavía atraviesan el toro."""
+    from math import sqrt
+
+    cfg = EnvConfig(n_civs=4, signal_speed=0.05, proj_speed=0.025)
+    assert (cfg.signal_slots // cfg.n_civs - 1) * cfg.signal_speed >= sqrt(0.5)
+    assert (cfg.projectile_slots // cfg.n_civs - 1) * cfg.proj_speed >= sqrt(0.5)
+    with pytest.raises(ValueError):
+        EnvConfig(detection_low=0.9, detection_high=0.1)
+    with pytest.raises(ValueError):
+        AnomalyConfig(radius=1)
