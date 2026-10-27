@@ -27,40 +27,47 @@
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Definir dimensiones físicas, colas, eventos, detecciones persistentes y refugio | | | |
-| Incorporar los parámetros físicos pendientes y corregir configuraciones del barrido | | | |
-| Implementar reset, step y observaciones para dos civilizaciones | | | |
-| Implementar señales, proyectiles y recompensa logarítmica | | | |
-| Implementar la anomalía, sus proyecciones y los estallidos | | | |
-| Probar invariantes, recompensa, reproducibilidad y compilación del entorno | | | |
+| Definir dimensiones físicas, colas, eventos, detecciones persistentes y refugio | Sergio | listo | 2026-10-27 |
+| Incorporar y validar los parámetros físicos de la primera simulación | Sergio | listo | 2026-10-27 |
+| Corregir y validar todas las configuraciones físicas del barrido | | | |
+| Implementar reset, step y observaciones para dos y cuatro civilizaciones | Sergio | listo | 2026-10-27 |
+| Implementar señales, proyectiles y recompensa logarítmica | Sergio | listo | 2026-10-27 |
+| Implementar la anomalía, sus proyecciones y los estallidos | Sergio | listo | 2026-10-27 |
+| Probar invariantes, recompensa, reproducibilidad y compilación del entorno | Sergio | listo | 2026-10-27 |
 | Precisar e implementar las señales costosas antes de evaluar H3 | | | |
 
 ## Políticas y modelo
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Implementar la política aleatoria mediante Policy | | | |
-| Implementar y probar los cuatro arquetipos | | | |
-| Construir el actor-crítico GRU y su adaptador de observaciones y Policy | | | |
-| Probar políticas, observación parcial y reinicio de memoria | | | |
+| Implementar la política aleatoria mediante Policy | Sergio | listo | 2026-10-27 |
+| Implementar y probar los cuatro arquetipos | Sergio | listo | 2026-10-27 |
+| Construir el actor-crítico GRU y su adaptador de observaciones y Policy | Sergio | listo | 2026-10-27 |
+| Probar políticas, observación parcial y reinicio de memoria | Sergio | listo | 2026-10-27 |
 
 ## Persistencia y ejecución
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Definir el formato versionado de trayectorias y un episodio sintético compartido | | | |
-| Guardar configuración, seed, metadatos, checkpoints y registros sin sobrescrituras | | | |
-| Resolver y verificar la dependencia de TensorBoard | | | |
-| Ejecutar y recargar episodios de la política aleatoria y los arquetipos | | | |
+| Definir el formato versionado y el lector compartido de trayectorias | Sergio | listo | 2026-10-27 |
+| Preparar un episodio sintético estable para los siguientes análisis científicos | | | |
+| Guardar configuración, seed, metadatos, checkpoints y registros sin sobrescrituras | Sergio | listo | 2026-10-27 |
+| Resolver y verificar la dependencia de TensorBoard | Sergio | listo | 2026-10-27 |
+| Ejecutar y recargar episodios de la política aleatoria y los arquetipos | Sergio | listo | 2026-10-27 |
+| Cargar un checkpoint para generar episodios sin volver a entrenar | Sergio | listo | 2026-10-27 |
+| Reanudar un entrenamiento interrumpido desde la CLI | | | |
 | Evaluar políticas en train y exportar resultados para análisis | | | |
-| Integrar simulación, guardado, métricas y reproducción de episodios | | | |
+| Integrar simulación, guardado, métricas y reproducción de episodios | Sergio | listo | 2026-10-27 |
+| Documentar cómo compartir código, corridas y modelos entre compañeros | Sergio | listo | 2026-10-27 |
 
 ## Aprendizaje
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Recoger rollouts y distinguir terminaciones, cortes y agentes muertos | | | |
-| Implementar GAE, PPO y una actualización finita del modelo | | | |
+| Recoger rollouts y distinguir terminaciones, cortes y agentes muertos | Sergio | listo | 2026-10-27 |
+| Implementar GAE, PPO y una actualización finita del modelo | Sergio | listo | 2026-10-27 |
+| Ejecutar entrenamientos exploratorios cortos con dos y cuatro civilizaciones | Sergio | listo | 2026-10-27 |
+| Completar el notebook guiado de entrenamiento | Sergio | listo | 2026-10-27 |
 | Construir el autojuego con oponentes congelados y pérdidas enmascaradas | | | |
 | Integrar la GRU con episodios reales y anomalía activa | | | |
 | Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | | | |
@@ -69,7 +76,8 @@
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Implementar métricas de supervivencia, emisión, transmisión, causas e información | | | |
+| Implementar métricas básicas de supervivencia, emisión, transmisiones y causas | Sergio | listo | 2026-10-27 |
+| Completar métricas de predicción, información mutua y clasificación de regímenes | | | |
 | Completar CI, sustituir pruebas vacías y retirar fallos esperados resueltos | | | |
 | Completar el barrido con nombres únicos y seeds exploratorias y finales | | | |
 | Definir el protocolo de H1 y H2 y los criterios de evidencia | | | |
@@ -86,8 +94,9 @@
 
 | tarea | responsable | estado | fecha |
 |---|---|---|---|
-| Consultar episodios guardados y sus metadatos desde notebooks | | | |
-| Reproducir episodios con Matplotlib sin ejecutar el entorno | | | |
+| Consultar episodios guardados y sus metadatos desde notebooks | Sergio | listo | 2026-10-27 |
+| Reproducir episodios con Matplotlib sin ejecutar el entorno | Sergio | listo | 2026-10-27 |
+| Exportar una primera animación GIF de un episodio guardado | Sergio | listo | 2026-10-27 |
 | Integrar galaxia, diagrama de fases y video de demostración | | | |
 | Exportar figuras y videos y documentar su almacenamiento | | | |
 | Redactar los módulos, metodología, resultados, limitaciones y referencias | | | |
