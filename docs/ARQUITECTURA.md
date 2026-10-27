@@ -2,7 +2,8 @@
 
 Este documento describe las interfaces existentes y los acuerdos para completarlas. **Los
 formatos de persistencia y el flujo integrado aquí descritos están pendientes de
-implementación.** Su avance se sigue por ID en [TAREAS.md](TAREAS.md).
+implementación.** El avance se registra en [TODO.md](TODO.md); los criterios y dependencias
+por ID están en [TAREAS.md](TAREAS.md).
 
 La especificación científica está en [PROPUESTA.md](PROPUESTA.md) y las reglas de desarrollo
 en [AGENTS.md](../AGENTS.md). Presentación: **9 al 13 de noviembre de 2026**; cierre: **8 de
@@ -10,7 +11,7 @@ noviembre**. El calendario operativo vive únicamente en TAREAS.
 
 ## 1. Módulos y límites
 
-| Ubicación | Responsabilidad | Propietario |
+| Ubicación | Responsabilidad | Frente |
 |---|---|---|
 | `darkforest/config.py` | Configuración tipada, YAML y overrides; fuente de hiperparámetros | A |
 | `darkforest/types.py` | Estado, observación y diagnósticos inmutables | A |
@@ -28,6 +29,27 @@ noviembre**. El calendario operativo vive únicamente en TAREAS.
 Se mantiene esta estructura. No se crea una carpeta genérica de scripts ni se trasladan las
 redes a un segundo paquete de modelos. Los ejecutables Python siguen el patrón
 `uv run python -m paquete.modulo`; los notebooks importan funciones y no duplican lógica.
+Los frentes A–E cubren cinco integrantes en total. Sergio construye los fundamentos comunes
+de esta iteración; las asignaciones futuras se completarán únicamente en TODO.
+
+### Configuración y fundamentos
+
+Las dataclasses congeladas validan también la construcción directa. `load_config` conserva
+YAML, herencia `extends` de un nivel y overrides por claves punteadas; la precedencia es
+valores predeterminados → YAML base → YAML hijo → overrides. Los errores identifican el
+parámetro en español: `KeyError` para claves desconocidas, `TypeError` para tipos incorrectos
+y `ValueError` para valores inválidos.
+
+Los conteos son enteros positivos, `n_civs` pertenece a `{2, 4, 6, 8}` y las seeds están entre
+0 y `2**32 - 1`, conforme al dominio de claves de 32 bits. Los números deben ser finitos;
+probabilidades y mezclas están en `[0, 1]`, costos y coeficientes son no negativos, y tasa de
+aprendizaje, margen PPO y velocidades son positivos. Se exige
+`proj_speed <= signal_speed`, sin corregir valores silenciosamente. El algoritmo inicial
+es `ippo`, el backend es `tensorboard` o `wandb` y el directorio de salida debe ser válido.
+
+La validación evita empezar con parámetros incoherentes. No implementa logging ni aprueba
+las combinaciones físicas del barrido actual: `--dry-run` todavía solo expande el producto
+cartesiano. A-02/D-03 deben revisar los YAML y validar cada celda antes de ejecutarla.
 
 Dependencias permitidas:
 
@@ -87,11 +109,23 @@ Hay **siete familias** en `ACTIONS`, pero el espacio discreto incluye los argume
 n_discrete = 2 + 1 + K + 1 + M + 1 = 5 + K + M
 ```
 
-`env.n_actions` actualmente cuenta familias; la política y los logits de la red necesitan
-`env.n_discrete`. Con `K=4` y `M=4` son 13 acciones, no siete. A-01 fijará y probará la
-codificación y sus límites. Aunque AGENTS menciona `Action`, actualmente no hay una clase
-`Action` en `types.py`: las acciones son arrays enteros. Tampoco hay un campo `n_actions` en
-la dataclass de configuración; no debe asumirse que esas interfaces ya existen.
+`env.n_actions` cuenta familias; la política y los logits de la red necesitan
+`env.n_discrete`, derivado de `EnvConfig.n_discrete`. Con `K=4` y `M=4` son 13 acciones.
+Las acciones son arrays enteros; no hay una clase `Action` en `types.py` ni un campo
+`n_actions` en la dataclass de configuración.
+
+| ID discreto | Familia | Argumento |
+|---|---|---|
+| `0`, `1`, `2` | crecer, ocultarse, observar | `-1` |
+| `3` a `K+2` | transmitir | símbolo de `0` a `K-1` |
+| `K+3` | compartir | `-1` |
+| `K+4` a `K+M+3` | atacar | ranura de detección de `0` a `M-1` |
+| `K+M+4` | refugiarse | `-1` |
+
+`decode_action` acepta escalares o arrays enteros y devuelve arrays de familia y argumento
+con la misma forma. Los IDs fuera de rango devuelven `(-1, -1)` y las entradas no enteras
+producen `TypeError`. La decodificación se comprueba en ejecución normal, `jit` y `vmap`.
+Este centinela no define aún qué efecto tendrá una acción inválida dentro de `step`.
 
 ### Estado, observación y diagnósticos
 
@@ -200,9 +234,19 @@ esa carpeta al buscar `results.json` por seed.
 `runs/` ya está ignorado por Git. También hay exclusiones globales para NPZ, MP4 y GIF. No se
 versionan checkpoints, datos crudos ni logs. `docs/assets/` se reserva para PNG/SVG pequeños
 seleccionados, con pie que identifique origen, config y seed o agregado. No se crean imágenes
-ni resultados ficticios en esta entrega documental.
+ni resultados ficticios en esta iteración.
 
 ## 4. UI y notebooks
+
+`notebooks/fundamentos.ipynb` recorre configuración, acciones y observaciones sintéticas con
+máscaras; no ejecuta episodios. `entrenamiento.ipynb`, `resultados.ipynb` y `demo.ipynb`
+contienen únicamente su propósito y estado pendiente. Son espacios preparados, no
+implementaciones de entrenamiento o visualización. Las dimensiones ilustrativas usadas en
+fundamentos no fijan las dimensiones físicas aún abiertas en A-01.
+
+JupyterLab, ipykernel y nbconvert están separados en el grupo `notebooks`. La copia ejecutada
+de verificación se guarda en `runs/notebook_checks/`; el notebook versionado no tiene salidas.
+Los pasos están en [PRIMEROS_PASOS.md](PRIMEROS_PASOS.md).
 
 La interfaz acordada es **Matplotlib y notebooks**. La demo seleccionará un episodio guardado,
 mostrará metadatos y permitirá reproducirlo; la vista combinada mostrará la galaxia junto al
@@ -222,13 +266,13 @@ que la capa artística permanece como extensión.
 
 | Hallazgo de la revisión | Resolución planificada |
 |---|---|
-| `uv` no disponible en esta sesión | G-01: preparar herramientas y registrar ejecución real de checks |
+| Preparación de herramientas por equipo | G-01: reproducir la instalación y las comprobaciones de la guía en cada máquina |
 | Dimensiones, capacidad de colas, recursos iniciales y reglas de acciones inválidas sin cerrar | A-01/A-02: documentar y configurar antes de integrar consumidores |
 | `proj_speed=0.05`, pero el barrido incluye `signal_speed=0.01` y `0.0316` | A-02/D-03: validar todas las combinaciones y corregir el diseño físico antes de entrenar |
 | TensorBoard predeterminado sin dependencia declarada | C-02: añadir/verificar el escritor elegido en una implementación posterior |
 | `payoff_matrix(env_cfg, ...)` sugiere simulación dentro de análisis | C-06/D-05: evaluar en `train/` y calcular pagos en `analysis/` desde archivos |
 | `costly_signals` sin mecanismo definido | A-06/D-07: especificar y probar costo/verificabilidad antes de H3 |
-| Pruebas con `...` y `xfail(strict=False)` | A-05/D-02: aserciones reales y retirada de marcadores al implementar |
+| Invariantes aún marcados con `skip` o `xfail` | A-05/D-02: aserciones reales y retirada de marcadores al implementar; no cuentan como funcionalidades verificadas |
 | Cinco seeds en el YAML también para el grid grueso | D-03: selección explícita de tres para exploración; ≥5 para resultados reportados |
 
 Antes de entrenar se requieren recursos no negativos, muertos inactivos, velocidad correcta
@@ -240,5 +284,6 @@ La prueba de integración I-01 recorre simulación → guardado → carga → m�
 H1 es una evaluación empírica posterior; una ejecución sin errores no confirma la hipótesis.
 Los resultados inesperados se investigan sin cambiar la recompensa para imponer estrategias.
 
-Este arranque modifica documentación. No implementa los contratos pendientes ni cambia
-Python, YAML, dependencias o CI.
+Esta iteración implementa validación, decodificación y pruebas de fundamentos; prepara
+archivos para los demás frentes. La dinámica física, las políticas, la red recurrente, la
+persistencia, el entrenamiento y la reproducción visual se implementarán después.
