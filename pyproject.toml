@@ -12,6 +12,7 @@ dependencies = [
     "matplotlib",
     "networkx",
     "wandb",
+    "tensorboard",
 ]
 
 [dependency-groups]
