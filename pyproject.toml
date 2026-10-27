@@ -16,6 +16,7 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest", "ruff"]
+notebooks = ["jupyterlab", "ipykernel", "nbconvert"]
 
 [build-system]
 requires = ["setuptools>=68"]

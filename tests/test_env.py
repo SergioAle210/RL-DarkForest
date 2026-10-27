@@ -26,13 +26,19 @@ def test_step_is_jittable(env):
     jax.jit(env.step)(key, state, jax.numpy.zeros(2, dtype=int))
 
 
-def test_dead_agents_get_no_reward(env): ...
+def test_dead_agents_get_no_reward(env):
+    """Reserva la prueba de agentes eliminados hasta implementar las transiciones."""
+    pytest.skip("Pendiente: transiciones y recompensa de agentes eliminados")
 
 
-def test_resources_nonnegative(env): ...
+def test_resources_nonnegative(env):
+    """Reserva el invariante de recursos hasta implementar las transiciones."""
+    pytest.skip("Pendiente: consumo y actualización de recursos")
 
 
-def test_signals_travel_at_c(env): ...
+def test_signals_travel_at_c(env):
+    """Reserva la comprobación física hasta implementar la propagación."""
+    pytest.skip("Pendiente: propagación de señales")
 
 
 def test_reward_is_only_log_growth():
