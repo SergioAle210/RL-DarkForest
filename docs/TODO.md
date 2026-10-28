@@ -77,8 +77,8 @@
 | Ejecutar entrenamientos exploratorios cortos con dos y cuatro civilizaciones | Sergio | listo | 2026-10-27 |
 | Completar el notebook guiado de entrenamiento | Sergio | listo | 2026-10-27 |
 | Construir el autojuego con oponentes congelados y pérdidas enmascaradas | | | |
-| Integrar la GRU con episodios reales y anomalía activa | Ricardo | pendiente | 2026-10-28 |
-| Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | Ricardo | pendiente | 2026-10-28 |
+| Integrar la GRU con episodios reales y anomalía activa | Ricardo | en proceso | 2026-10-28 |
+| Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | Ricardo | en proceso | 2026-10-28 |
 | Registrar el retorno por iteración para ver la curva de aprendizaje | Ricardo | listo | 2026-10-28 |
 
 ## Experimentos y análisis

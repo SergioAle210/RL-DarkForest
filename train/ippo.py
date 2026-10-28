@@ -197,6 +197,40 @@ def make_update(cfg: Config):
     return update
 
 
+def run_iteration(
+    cfg: Config,
+    env: DarkForestEnv,
+    rollout,
+    update,
+    state: TrainState,
+    runner: RunnerState,
+    key: jax.Array,
+    assignment: jax.Array,
+) -> tuple[TrainState, RunnerState, jax.Array, dict[str, jax.Array]]:
+    """Una iteración: recolecta, calcula ventajas, actualiza y devuelve las métricas."""
+    key, rollout_key = jax.random.split(key)
+    runner, batch = rollout(rollout_key, state.params, None, assignment, runner)
+    advantages = compute_gae(
+        batch["rewards"],
+        batch["values"],
+        batch["dones"],
+        batch["next_values"][-1],
+        cfg.train.gamma,
+        cfg.train.gae_lambda,
+        terminated=batch["terminated"],
+        next_values=batch["next_values"],
+    )
+    mask = batch["valid"].astype(float)
+    count = jnp.maximum(mask.sum(), 1)
+    mean = (advantages * mask).sum() / count
+    variance = (((advantages - mean) ** 2) * mask).sum() / count
+    batch["returns"] = jax.lax.stop_gradient(advantages + batch["values"])
+    batch["advantages"] = jax.lax.stop_gradient((advantages - mean) / jnp.sqrt(variance + 1e-8))
+    for _ in range(cfg.train.update_epochs):
+        state, metrics = update(state, batch)
+    return state, runner, key, {**metrics, **rollout_metrics(batch, env)}
+
+
 def train(cfg: Config, name: str) -> TrainState:
     """Entrena IPPO recurrente y guarda un checkpoint y episodios de comparación."""
     env = DarkForestEnv(cfg.env)
@@ -216,29 +250,9 @@ def train(cfg: Config, name: str) -> TrainState:
         before = collect_episode(env, NetworkPolicy(model, state.params), evaluation_key)
         save_episode(logger.dir, before, cfg=cfg, policy_name="red_inicial", episode_id=1)
         for index in range(cfg.train.total_steps // chunk):
-            key, rollout_key = jax.random.split(key)
-            runner, batch = rollout(rollout_key, state.params, None, assignment, runner)
-            advantages = compute_gae(
-                batch["rewards"],
-                batch["values"],
-                batch["dones"],
-                batch["next_values"][-1],
-                cfg.train.gamma,
-                cfg.train.gae_lambda,
-                terminated=batch["terminated"],
-                next_values=batch["next_values"],
+            state, runner, key, metrics = run_iteration(
+                cfg, env, rollout, update, state, runner, key, assignment
             )
-            mask = batch["valid"].astype(float)
-            count = jnp.maximum(mask.sum(), 1)
-            mean = (advantages * mask).sum() / count
-            variance = (((advantages - mean) ** 2) * mask).sum() / count
-            batch["returns"] = jax.lax.stop_gradient(advantages + batch["values"])
-            batch["advantages"] = jax.lax.stop_gradient(
-                (advantages - mean) / jnp.sqrt(variance + 1e-8)
-            )
-            for _ in range(cfg.train.update_epochs):
-                state, metrics = update(state, batch)
-            metrics = {**metrics, **rollout_metrics(batch, env)}
             metrics = {name: float(value) for name, value in metrics.items()}
             if not all(np.isfinite(value) for value in metrics.values()):
                 raise FloatingPointError("El entrenamiento produjo métricas no finitas")
