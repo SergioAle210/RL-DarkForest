@@ -78,6 +78,26 @@ def test_projectile_delay_death_and_dead_agents():
     assert float(later.state.resources[1]) == 0
 
 
+@pytest.mark.parametrize("cancel", [False, True])
+def test_first_strike_cancels_projectiles_of_the_dead_only_when_enabled(cancel):
+    """Con la opción activa, el eliminado no llega a impactar con su proyectil en vuelo."""
+    env = environment(p_kill=1, projectiles_cancel_on_death=cancel)
+    key = jax.random.PRNGKey(2)
+    _, state = env.reset(key)
+    state = state.replace(
+        pos=jnp.array([[0.0, 0.0], [0.2, 0.0]]), contact_t=jnp.array([[-1, 0], [0, -1]])
+    )
+    step = jax.jit(env.step)
+    out = step(key, state, jnp.array([8, 1]))
+    out = step(key, out.state, jnp.array([1, 1]))
+    out = step(key, out.state, jnp.array([1, 8]))
+    out = step(key, out.state, jnp.array([1, 1]))
+    np.testing.assert_array_equal(out.state.alive, [True, False])
+    for _ in range(2):
+        out = step(key, out.state, jnp.array([1, 1]))
+    assert bool(out.state.alive[0]) is cancel
+
+
 def test_insufficient_resources_unknown_targets_and_invalid_actions():
     """Las acciones imposibles no consumen recursos ni producen efectos."""
     env = environment(initial_resources=0.001)

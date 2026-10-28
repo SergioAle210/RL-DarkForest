@@ -1,0 +1,15 @@
+# Como aprendizaje_dos, pero con letalidad no nula (el periodo aleatorio viene de base.yaml).
+extends: base.yaml
+env:
+  n_civs: 2
+  max_steps: 48
+  anomaly:
+    lethality: 0.5
+train:
+  n_envs: 4
+  total_steps: 2048
+  rollout_len: 16
+  gru_hidden: 32
+  update_epochs: 3
+  self_play:
+    rho: 0.0

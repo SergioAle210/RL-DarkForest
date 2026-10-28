@@ -135,11 +135,21 @@ es instrumental (criterio de no imposición).
 
 | ID | Hipótesis | Cómo se prueba |
 |---|---|---|
-| **H1** (control) | Con $\lambda = 0$, el silencio o el ataque preventivo dominan para cualquier retraso. | Si no ocurre, el entorno tiene un error. Es la prueba de cordura. |
+| **H1** (control) | Con $\lambda = 0$ la cooperación no tiene valor: anular el canal no cambia el retorno ni la supervivencia. | Ablación del canal con $\lambda = 0$ y comparación contra las políticas que no lo usan. Si el canal importa con $\lambda = 0$, hay una fuga de información o un error del entorno. Es la prueba de cordura. |
 | **H2** (umbral) | Existe un $\lambda^*$ a partir del cual emerge la comunicación, y $\lambda^*$ crece con el retraso y con $p_{\text{kill}}$. | Barrido $\lambda \times c$; la frontera de fase es el resultado principal. |
 | **H3** (señales costosas) | Permitir señales caras de falsificar reduce $\lambda^*$. | Mismo barrido con y sin señales costosas. |
 | **H4** (coaliciones) | Con $N \geq 6$ y detección local, emergen grupos que comparten información entre sí y guardan silencio ante los demás. | Grafo de quién responde a quién, más detección de comunidades. |
 | **H5** (biestabilidad) | Cerca de $\lambda^*$, unas seeds convergen a cooperación y otras a silencio. | Distribución de resultados por seed en la frontera. |
+
+**Nota sobre H1 (reformulada el 27 de octubre de 2026).** La redacción original decía: "Con
+$\lambda = 0$, el silencio o el ataque preventivo dominan para cualquier retraso". Se cambió
+después de medir políticas fijas en el entorno implementado (`docs/DIAGNOSTICO_DISENO.md`): con
+$\lambda = 0$ crecer fue la mejor respuesta a todas las estrategias medidas, porque con
+recompensa logarítmica y crecimiento exponencial renunciar a crecer cuesta mucho más que el
+riesgo de ser atacado. H1 era una predicción interna de diseño, no un resultado. El cambio es
+posterior a ver datos y se reporta como tal. La pregunta original se conserva como pregunta
+exploratoria: si en alguna región de parámetros el silencio o el ataque preventivo dominan con
+$\lambda = 0$. No se usa como prueba de cordura.
 
 ## 5. Cómo distinguir emergencia genuina
 

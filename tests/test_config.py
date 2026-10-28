@@ -15,7 +15,8 @@ from darkforest.config import (
     load_config,
     to_dict,
 )
-from train.sweep import expand_grid
+from train.sweep import expand_grid, validate_cell
+from train.sweep import main as sweep_main
 
 CONFIGS = Path(__file__).parents[1] / "configs"
 COUNTS = (
@@ -51,6 +52,7 @@ BOOLEANS = (
     "env.costly_signals",
     "env.channel_enabled",
     "env.shuffle_messages",
+    "env.projectiles_cancel_on_death",
     "env.anomaly.interfere",
 )
 
@@ -358,6 +360,33 @@ def test_grid_expansion():
     """El barrido conserva el producto cartesiano de parámetros."""
     cells = expand_grid({"a": [1, 2], "b": [3, 4, 5]})
     assert len(cells) == 6
+
+
+def test_sweep_cell_validation_reports_invalid_cells():
+    """Una corrida con proyectil más rápido que la señal o clave desconocida se rechaza."""
+    base = CONFIGS / "base.yaml"
+    assert validate_cell(base, {"env.signal_speed": 0.1, "train.seed": 0}) is None
+    slow_signal = validate_cell(base, {"env.signal_speed": 0.01, "train.seed": 0})
+    assert slow_signal is not None and "proj_speed" in slow_signal
+    unknown = validate_cell(base, {"env.nope": 1, "train.seed": 0})
+    assert unknown is not None and "nope" in unknown
+
+
+def test_sweep_dry_run_counts_and_rejects_invalid_runs(tmp_path, monkeypatch, capsys):
+    """El simulacro cuenta las corridas, marca las inválidas y falla sin entrenar."""
+    spec = tmp_path / "sweep.yaml"
+    spec.write_text(
+        yaml.safe_dump({"seeds": [0, 1], "grid": {"env.signal_speed": [0.01, 0.1]}}),
+        encoding="utf-8",
+    )
+    argv = ["sweep", "--config", str(spec), "--base", str(CONFIGS / "base.yaml"), "--dry-run"]
+    monkeypatch.setattr("sys.argv", argv)
+    with pytest.raises(SystemExit):
+        sweep_main()
+    output = capsys.readouterr().out
+    assert "Corridas: 4, inválidas: 2" in output
+    assert output.count("valida\n") == 2
+    assert output.count("invalida: env.proj_speed") == 2
 
 
 @pytest.mark.parametrize(

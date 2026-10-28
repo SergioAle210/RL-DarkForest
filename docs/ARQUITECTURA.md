@@ -49,8 +49,9 @@ aprendizaje, margen PPO y velocidades son positivos. Se exige
 es `ippo`, el backend es `tensorboard` o `wandb` y el directorio de salida debe ser válido.
 
 La validación evita empezar con parámetros incoherentes. No implementa logging ni aprueba
-las combinaciones físicas del barrido actual: `--dry-run` todavía solo expande el producto
-cartesiano. A-02/D-03 deben revisar los YAML y validar cada celda antes de ejecutarla.
+las combinaciones físicas del barrido actual: `--dry-run` expande el producto cartesiano,
+construye la configuración de cada corrida y falla si alguna es inválida. A-02/D-03 deben
+corregir los YAML para que todas las celdas pasen esa validación.
 
 Dependencias permitidas:
 
@@ -312,6 +313,8 @@ que la capa artística permanece como extensión.
 | Reanudación de entrenamiento por CLI y backend W&B | C-02: completar estas rutas; TensorBoard local y checkpoint para inferencia ya funcionan |
 | `payoff_matrix(env_cfg, ...)` sugiere simulación dentro de análisis | C-06/D-05: evaluar en `train/` y calcular pagos en `analysis/` desde archivos |
 | `costly_signals` sin mecanismo definido | A-06/D-07: especificar y probar costo/verificabilidad antes de H3 |
+| Con periodo fijo y `since_burst` público, cooperar no compensa (aporte real de -0.20 a -0.24) | A-07: `anomaly.period_spread` lo lleva a +0.18 a +0.50; detalle en DIAGNOSTICO_DISENO.md |
+| El log de entrenamiento no guarda el retorno por iteración | C-07: registrar retorno y supervivencia para tener curva de aprendizaje |
 | CI y protocolo empírico H1 | D-02/D-04: verificar CI y definir comparadores; los invariantes locales ya tienen aserciones reales |
 | Cinco seeds en el YAML también para el grid grueso | D-03: selección explícita de tres para exploración; ≥5 para resultados reportados |
 

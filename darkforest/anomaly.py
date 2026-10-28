@@ -10,11 +10,16 @@ from darkforest.geometry import distance
 
 
 def sample_theta(key: jax.Array, cfg: AnomalyConfig) -> jax.Array:
-    """Muestrea fase y centro; conserva periodo y radio de la configuración."""
+    """Muestrea fase y centro; el periodo es fijo salvo que period_spread sea positivo."""
     phase_key, center_key = jax.random.split(key)
-    phase = jax.random.randint(phase_key, (), 0, cfg.period)
+    period = cfg.period
+    if cfg.period_spread:
+        # fold_in deja intactos los flujos de fase y centro del caso de periodo fijo
+        low, high = cfg.period - cfg.period_spread, cfg.period + cfg.period_spread + 1
+        period = jax.random.randint(jax.random.fold_in(key, 1), (), low, high)
+    phase = jax.random.randint(phase_key, (), 0, period)
     center = jax.random.uniform(center_key, (2,))
-    return jnp.array([phase, cfg.period, center[0], center[1], cfg.radius])
+    return jnp.array([phase, period, center[0], center[1], cfg.radius])
 
 
 def projection(theta: jax.Array, view_angle: jax.Array) -> jax.Array:
