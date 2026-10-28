@@ -17,6 +17,9 @@ uv run python -m train.ippo --config configs/aprendizaje_dos.yaml
 uv run --group notebooks jupyter lab notebooks/demo.ipynb
 uv run python -m train.valor_cooperacion --world periodo_aleatorio  # diagnóstico: aporte de cooperar
 uv run python -m train.matriz_pagos --lethality 0                   # diagnóstico: matriz de pagos
+uv run python -m train.pagos_rejilla --out-dir runs/pagos       # matrices de pagos por celda
+uv run python -m train.medir_entrenamiento --config configs/base.yaml --n-envs 1024
+uv run python -m train.evaluar_checkpoint --checkpoint <ruta> --baselines
 make test                 # pytest
 make lint                 # ruff check + format --check
 make sanity               # entrena la config H1 (lambda = 0)

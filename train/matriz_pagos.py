@@ -14,6 +14,8 @@ Uso: python -m train.matriz_pagos --lethality 0 --modes crecer silencio ataque_u
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 from typing import Any
 
 import jax
@@ -92,6 +94,45 @@ def run_pair(
     return float(total[:, 0].mean()), float(state.alive[:, 0].mean())
 
 
+def payoff_matrix(
+    lethality: float,
+    modes: list[str],
+    seeds: int,
+    episodes: int,
+    steps: int,
+    env_over: dict[str, Any] | None = None,
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Matriz A[i, j] con el retorno medio de la estrategia i contra la j, lista para guardar."""
+    size = len(modes)
+    matrix, errors, survival = (np.zeros((size, size)) for _ in range(3))
+    for i, row in enumerate(modes):
+        for j, col in enumerate(modes):
+            runs = [
+                run_pair(lethality, row, col, s, episodes=episodes, steps=steps, env_over=env_over)
+                for s in range(seeds)
+            ]
+            matrix[i, j], errors[i, j] = mean_se([r[0] for r in runs])
+            survival[i, j] = np.mean([r[1] for r in runs])
+            if verbose:
+                print(
+                    f"  {row:12s} contra {col:12s} {matrix[i, j]:+.3f} +- {errors[i, j]:.3f} "
+                    f"superv={survival[i, j]:.3f}",
+                    flush=True,
+                )
+    return {
+        "modes": list(modes),
+        "lethality": lethality,
+        "overrides": env_over or {},
+        "seeds": seeds,
+        "episodes": episodes,
+        "steps": steps,
+        "matrix": matrix.tolist(),
+        "se": errors.tolist(),
+        "survival": survival.tolist(),
+    }
+
+
 def main() -> None:
     """Imprime la matriz de pagos y la mejor respuesta contra cada columna."""
     p = argparse.ArgumentParser()
@@ -103,6 +144,7 @@ def main() -> None:
     p.add_argument("--p-kill", type=float)
     p.add_argument("--cancel", action="store_true", help="env.projectiles_cancel_on_death")
     p.add_argument("--set", action="append", default=[], metavar="CLAVE=VALOR", dest="extra")
+    p.add_argument("--out", help="guarda la matriz y sus metadatos en este archivo JSON")
     args = p.parse_args()
     over: dict[str, Any] = {k: yaml.safe_load(v) for k, v in (e.split("=", 1) for e in args.extra)}
     if args.cancel:
@@ -112,29 +154,15 @@ def main() -> None:
     print(
         f"lambda={args.lethality}, retorno de la fila contra la columna, {args.seeds} seeds, {over}"
     )
-    matrix = np.zeros((len(args.modes), len(args.modes)))
-    for i, row in enumerate(args.modes):
-        for j, col in enumerate(args.modes):
-            runs = [
-                run_pair(
-                    args.lethality,
-                    row,
-                    col,
-                    s,
-                    episodes=args.episodes,
-                    steps=args.steps,
-                    env_over=over,
-                )
-                for s in range(args.seeds)
-            ]
-            matrix[i, j], se = mean_se([r[0] for r in runs])
-            survival = np.mean([r[1] for r in runs])
-            print(
-                f"  {row:12s} contra {col:12s} {matrix[i, j]:+.3f} +- {se:.3f} "
-                f"superv={survival:.3f}"
-            )
+    result = payoff_matrix(
+        args.lethality, args.modes, args.seeds, args.episodes, args.steps, over, verbose=True
+    )
+    matrix = np.asarray(result["matrix"])
     for j, col in enumerate(args.modes):
         print(f"  mejor respuesta contra {col}: {args.modes[int(np.argmax(matrix[:, j]))]}")
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

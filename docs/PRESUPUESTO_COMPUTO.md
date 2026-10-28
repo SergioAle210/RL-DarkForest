@@ -39,6 +39,11 @@ Con 4 civilizaciones los tiempos se duplican. Las corridas se supusieron secuenc
 varias a la vez en esta CPU no se midió y es probable que no dé ganancia, porque JAX ya usa los
 hilos disponibles.
 
+Una corrida real de 50 millones de pasos (periodo fijo, λ = 1.0, 2 civilizaciones, 1024 entornos) tardó
+38.6 minutos, más rápido de lo proyectado por la tabla (unos 57), con 763 iteraciones sin valores
+no finitos y unos 1.4 GB de memoria. La tabla usa pocas iteraciones por fila, así que subestima el
+rendimiento sostenido.
+
 ## Reproducir
 
 ```bash
