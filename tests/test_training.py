@@ -16,10 +16,13 @@ from darkforest.config import (
     TrainConfig,
 )
 from darkforest.env import DarkForestEnv
+from darkforest.networks import ActorCriticGRU, NetworkPolicy
 from darkforest.trajectories import load_episode
 from train.episodes import checkpoint_policy, collect_episode
+from train.evaluar_checkpoint import evaluate
 from train.ippo import compute_gae, initialize, make_rollout, rollout_metrics, train
 from train.logging_utils import run_dir
+from train.medir_entrenamiento import measure
 
 
 def tiny_config(out_dir="runs"):
@@ -117,3 +120,22 @@ def test_nonzero_selfplay_is_not_silently_ignored():
     cfg = replace(cfg, train=replace(cfg.train, self_play=SelfPlayConfig(rho=0.3)))
     with pytest.raises(NotImplementedError, match="rho=0"):
         make_rollout(DarkForestEnv(cfg.env), cfg)
+
+
+def test_training_speed_measurement_reports_finite_positive_values():
+    """El medidor ejecuta iteraciones reales y devuelve tiempos y estabilidad coherentes."""
+    result = measure(tiny_config(), iterations=2)
+    assert result["finite"]
+    assert result["first_s"] > 0 and result["steady_s"] > 0
+    assert result["steps_per_s"] == pytest.approx(4 / result["steady_s"])
+
+
+def test_checkpoint_evaluation_reports_consistent_rates():
+    """La evaluación vectorizada da tasas válidas y reparte las acciones entre las familias."""
+    cfg = tiny_config()
+    state, _ = initialize(cfg, jax.random.PRNGKey(0))
+    model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
+    result = evaluate(cfg, NetworkPolicy(model, state.params), seed=0, episodes=4)
+    assert 0 <= result["survival"] <= 1
+    assert sum(result[f"action_{name}"] for name in ACTIONS) == pytest.approx(1)
+    assert np.isfinite(result["mean_return"])

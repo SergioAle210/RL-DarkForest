@@ -19,6 +19,7 @@ uv run python -m train.valor_cooperacion --world periodo_aleatorio \
 uv run python -m train.matriz_pagos --lethality 0
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 0.75
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 1.0
+uv run python -m train.pagos_rejilla --out-dir runs/pagos --set env.detection_growth=0.05
 ```
 
 Las pruebas con valores calculables están en `tests/test_diagnostico.py`.
@@ -171,6 +172,43 @@ que se pierde al cooperar con un atacante). El aporte es 7.754 - 7.196 = 0.558.
   alta ambos se detectan casi a la vez y no hay ventaja.
 - No se eligió el valor de `detection_growth`: son tres puntos, no un barrido. Qué valores entran
   al barrido principal queda por decidir y debe reportarse con sensibilidad.
+
+## Hallazgo 5: el replicador y las masas críticas
+
+Se midió una matriz de pagos por celda (λ de 0.25, 0.5 y 1.0 por c de 0.05, 0.22 y 1.0) con cuatro
+estrategias: oculta, solo, coop_real y ataque_solo, con `detection_growth` 0.05, 3 seeds y 200
+episodios por pareja (menos que las otras tablas, así que el ruido es mayor). No son los cuatro
+arquetipos del repositorio, que son toscos (el que siempre transmite no crece dos de cada tres
+pasos); se usan las estrategias de los diagnósticos anteriores.
+
+```bash
+uv run python -m train.pagos_rejilla --out-dir runs/pagos --set env.detection_growth=0.05
+```
+
+En las nueve celdas el replicador deja tres resultados estables: todos solos, todos cooperan y
+todos atacan. Cuál se alcanza depende de la mezcla inicial, de modo que es un juego de
+coordinación y no de dominio. La fracción de poblaciones iniciales aleatorias que terminan en
+ataque (entre 70% y 88%) no es un resultado: depende solo de que una mezcla uniforme incluye
+muchos atacantes. Por eso se reporta la masa crítica, es decir, la fracción de una estrategia a
+partir de la cual vence a otra en el juego de esas dos. Mediana y rango del 5% al 95% al propagar
+el error de cada pago:
+
+| λ | c | Cooperadores necesarios frente a solos | Atacantes necesarios frente a cooperadores |
+|---|---|---|---|
+| 0.25 | 0.05 | 0.64 [0.00, 1.00] | 0.13 [0.00, 0.24] |
+| 0.5 | 0.22 | 0.33 [0.00, 0.53] | 0.30 [0.22, 0.38] |
+| 1.0 | 1.0 | 0.26 [0.01, 0.44] | 0.34 [0.28, 0.40] |
+
+Los atacantes necesarios para vencer a quienes solo crecen son cerca de 5% en todas las celdas,
+pero no están determinados (el rango llega de 0 a unos 0.3): la ventaja de solo sobre atacar es de
+unos 0.07 de retorno, dentro del ruido. La figura completa está en `docs/assets/masas_criticas.png`.
+
+- Con λ y c más altos hace falta menos masa de cooperadores para que cooperar se imponga y la
+  cooperación resiste mejor a los atacantes. Es la forma que predice H2, y se apoya en comparar
+  esquinas de la rejilla, no celdas vecinas.
+- Los rangos son anchos: a señal lenta la masa de cooperadores va de 0 a 1.
+- No sustituye a H2 con agentes entrenados. Son estrategias fijas, parejas de dos y masas críticas
+  de juegos de dos estrategias, que ignoran la tercera.
 
 ## Comprobación de la H1 reformulada
 

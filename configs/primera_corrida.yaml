@@ -1,0 +1,15 @@
+# Primera corrida real: 2 civilizaciones, letalidad 0.5, crecer con detección 0.05 (el miedo existe
+# y compartir es el acto visible). Sin autojuego (rho 0): todas las civilizaciones son la misma red.
+# 160 iteraciones de 1024 entornos por 64 pasos, unos 10.5 millones de pasos de entorno.
+extends: base.yaml
+env:
+  n_civs: 2
+  detection_growth: 0.05
+  anomaly:
+    lethality: 0.5
+train:
+  n_envs: 1024
+  rollout_len: 64
+  total_steps: 10485760
+  self_play:
+    rho: 0.0
