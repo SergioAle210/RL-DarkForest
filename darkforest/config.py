@@ -55,6 +55,7 @@ def _choice(name: str, value: str, choices: tuple[str, ...]) -> None:
 class AnomalyConfig:
     lethality: float = 0.5  # lambda
     period: int = 20
+    period_spread: int = 0  # 0 = periodo fijo; k = periodo uniforme en [period - k, period + k]
     noise_std: float = 0.1
     interfere: bool = False  # extensión J-04
     radius: float = 0.25
@@ -63,6 +64,9 @@ class AnomalyConfig:
         """Valida los parámetros de la anomalía."""
         _number("anomaly.lethality", self.lethality, maximum=1)
         _integer("anomaly.period", self.period)
+        _integer("anomaly.period_spread", self.period_spread, minimum=0)
+        if self.period_spread >= self.period:
+            raise ValueError("anomaly.period_spread: debe ser menor que period")
         _number("anomaly.noise_std", self.noise_std)
         _require_type("anomaly.interfere", self.interfere, bool)
         _number("anomaly.radius", self.radius, maximum=sqrt(0.5), positive=True)
@@ -85,6 +89,7 @@ class EnvConfig:
     costly_signals: bool = False
     channel_enabled: bool = True  # False = ablación del canal
     shuffle_messages: bool = False  # ablación: barajar mensajes
+    projectiles_cancel_on_death: bool = False  # True: un proyectil no impacta si su origen murió
     anomaly: AnomalyConfig = AnomalyConfig()
     initial_resources: float = 1.0
     detection_low: float = 0.05
@@ -108,7 +113,12 @@ class EnvConfig:
         if self.proj_speed > self.signal_speed:
             raise ValueError("env.proj_speed: no debe superar signal_speed")
         _number("env.p_kill", self.p_kill, maximum=1)
-        for name in ("costly_signals", "channel_enabled", "shuffle_messages"):
+        for name in (
+            "costly_signals",
+            "channel_enabled",
+            "shuffle_messages",
+            "projectiles_cancel_on_death",
+        ):
             _require_type(f"env.{name}", getattr(self, name), bool)
         _require_type("env.anomaly", self.anomaly, AnomalyConfig)
         _number("env.initial_resources", self.initial_resources, positive=True)

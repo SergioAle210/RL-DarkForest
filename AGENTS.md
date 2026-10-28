@@ -15,6 +15,8 @@ uv run ruff check .       # lint (y `uv run ruff format .` para formatear)
 uv run --group notebooks jupyter lab notebooks/fundamentos.ipynb
 uv run python -m train.ippo --config configs/aprendizaje_dos.yaml
 uv run --group notebooks jupyter lab notebooks/demo.ipynb
+uv run python -m train.valor_cooperacion --world periodo_aleatorio  # diagnóstico: aporte de cooperar
+uv run python -m train.matriz_pagos --lethality 0                   # diagnóstico: matriz de pagos
 make test                 # pytest
 make lint                 # ruff check + format --check
 make sanity               # entrena la config H1 (lambda = 0)
@@ -22,7 +24,9 @@ make sweep-coarse         # barrido 3x3
 ```
 
 `make sanity` y el ejecutor del barrido requieren completar el autojuego y los experimentos.
-`--dry-run` expande combinaciones, pero todavía no valida sus parámetros físicos.
+`--dry-run` expande combinaciones y construye la configuración de cada corrida; marca las
+inválidas, cuenta los totales y termina con error si hay alguna. Los YAML del barrido
+todavía contienen celdas inválidas que deben corregirse.
 Los entrenamientos de comprobación usan `aprendizaje_dos.yaml` y `aprendizaje_cuatro.yaml`,
 con `rho=0`. El contrato operativo y la entrega al equipo están en `docs/EPISODIOS.md`.
 
@@ -37,7 +41,7 @@ con `rho=0`. El contrato operativo y la entrega al equipo están en `docs/EPISOD
 | `darkforest/policies.py` | Protocolo `Policy` (`init_carry`, `act`) | Toda política (red, arquetipo, aleatoria) lo implementa |
 | `darkforest/archetypes.py` | Heurísticas y modelo nulo | Usan `Obs`, carry y configuración del catálogo; nunca `EnvState` |
 | `darkforest/networks.py` | Actor-crítico GRU | Sin lógica de entorno |
-| `train/` | IPPO, población de autojuego, barrido | No importa nada de `analysis/` ni `viz/` |
+| `train/` | IPPO, población de autojuego, barrido, diagnósticos con políticas fijas | No importa nada de `analysis/` ni `viz/` |
 | `analysis/` | Métricas, replicador, diagrama de fases | Lee trayectorias/resultados en disco, no corre el entorno en vivo |
 | `viz/` | Animación | Solo lectura de trayectorias |
 

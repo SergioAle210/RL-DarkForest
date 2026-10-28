@@ -210,6 +210,9 @@ class DarkForestEnv:
         hits = arrived[:, None] & (target_match <= cfg.collision_tolerance)
         hits &= jax.random.bernoulli(hit_key, float(cfg.p_kill), hits.shape)
         hits &= state.alive[None, :] & (origins[:, None] != agents[None, :])
+        if cfg.projectiles_cancel_on_death:
+            # el primer impacto cancela los proyectiles en vuelo del eliminado
+            hits &= state.alive[origins][:, None]
         attacked = jnp.any(hits, axis=0)
         attacker = jnp.where(attacked, origins[jnp.argmax(hits, axis=0)], -1)
         burst = anomaly.burst_due(now, state.theta)

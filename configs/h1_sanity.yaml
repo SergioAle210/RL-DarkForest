@@ -1,4 +1,4 @@
-# Prueba de cordura H1: lambda = 0, el silencio o el ataque preventivo deben dominar.
+# Prueba de cordura H1: lambda = 0, la cooperación no debe tener valor (el canal no importa).
 extends: base.yaml
 env:
   n_civs: 2
