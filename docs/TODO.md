@@ -92,10 +92,10 @@
 | Definir el protocolo de H1 y H2 y los criterios de evidencia | Ricardo | en proceso | 2026-10-28 |
 | Construir la matriz de pagos, el replicador y sus puntos fijos desde archivos | Ricardo | listo | 2026-10-28 |
 | Agregar resultados, diagramas de fases e incertidumbre y evaluar H5 | | | |
-| Ejecutar ablaciones de canal y mensajes y evaluar H3 | Ricardo | pendiente | 2026-10-28 |
+| Ejecutar ablaciones de canal y mensajes y evaluar H3 | | | |
 | Preparar Colab y medir el presupuesto de cómputo | | | |
 | Evaluar parámetros secundarios con comparaciones controladas | | | |
-| Evaluar H1 empíricamente y diagnosticar resultados inesperados | Ricardo | pendiente | 2026-10-28 |
+| Evaluar H1 empíricamente y diagnosticar resultados inesperados | | | |
 | Ejecutar el barrido exploratorio de tres por tres con tres seeds | | | |
 | Consolidar H1 y H2 con al menos cinco seeds por configuración reportada | | | |
 
