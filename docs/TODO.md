@@ -77,8 +77,8 @@
 | Ejecutar entrenamientos exploratorios cortos con dos y cuatro civilizaciones | Sergio | listo | 2026-10-27 |
 | Completar el notebook guiado de entrenamiento | Sergio | listo | 2026-10-27 |
 | Construir el autojuego con oponentes congelados y pérdidas enmascaradas | | | |
-| Integrar la GRU con episodios reales y anomalía activa | | | |
-| Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | | | |
+| Integrar la GRU con episodios reales y anomalía activa | Ricardo | pendiente | 2026-10-28 |
+| Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | Ricardo | pendiente | 2026-10-28 |
 | Registrar el retorno por iteración para ver la curva de aprendizaje | Ricardo | listo | 2026-10-28 |
 
 ## Experimentos y análisis
@@ -89,13 +89,13 @@
 | Completar métricas de predicción, información mutua y clasificación de regímenes | | | |
 | Completar CI, sustituir pruebas vacías y retirar fallos esperados resueltos | | | |
 | Completar el barrido con nombres únicos y seeds exploratorias y finales | | | |
-| Definir el protocolo de H1 y H2 y los criterios de evidencia | | | |
+| Definir el protocolo de H1 y H2 y los criterios de evidencia | Ricardo | en proceso | 2026-10-28 |
 | Construir la matriz de pagos, el replicador y sus puntos fijos desde archivos | | | |
 | Agregar resultados, diagramas de fases e incertidumbre y evaluar H5 | | | |
-| Ejecutar ablaciones de canal y mensajes y evaluar H3 | | | |
+| Ejecutar ablaciones de canal y mensajes y evaluar H3 | Ricardo | pendiente | 2026-10-28 |
 | Preparar Colab y medir el presupuesto de cómputo | | | |
 | Evaluar parámetros secundarios con comparaciones controladas | | | |
-| Evaluar H1 empíricamente y diagnosticar resultados inesperados | | | |
+| Evaluar H1 empíricamente y diagnosticar resultados inesperados | Ricardo | pendiente | 2026-10-28 |
 | Ejecutar el barrido exploratorio de tres por tres con tres seeds | | | |
 | Consolidar H1 y H2 con al menos cinco seeds por configuración reportada | | | |
 
