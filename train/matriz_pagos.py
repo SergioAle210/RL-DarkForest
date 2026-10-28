@@ -4,8 +4,9 @@ Diagnóstico previo al entrenamiento: muestra si alguna estrategia gana siempre 
 actuales, es decir, si el resultado ya está en las reglas. Lectura en docs/DIAGNOSTICO_DISENO.md.
 
 crecer: siempre crece. silencio: siempre se oculta. ataque_unico: dispara una vez al primer
-contacto detectado y luego sigue creciendo. Cualquier modo de train.valor_cooperacion también
-sirve (solo, oculta, coop_real...).
+contacto detectado y luego sigue creciendo. ataque_solo: como solo (se protege de la anomalía)
+pero dispara una vez al primer contacto. Cualquier modo de train.valor_cooperacion también
+sirve (solo, oculta, coop_real...). Con --set se cambia cualquier parámetro del entorno.
 
 Uso: python -m train.matriz_pagos --lethality 0 --modes crecer silencio ataque_unico
 """
@@ -18,6 +19,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
+import yaml
 
 from train.valor_cooperacion import PERIODO_ALEATORIO, build_env, decide, mean_se, update_bursts
 
@@ -34,8 +36,12 @@ def run_pair(
     episodes: int = 400,
     steps: int = 200,
     env_over: dict[str, Any] | None = None,
-) -> tuple[float, float]:
-    """Retorno medio y supervivencia de la civilización 0 jugando mode0 contra mode1."""
+    full: bool = False,
+) -> tuple[float, ...]:
+    """Retorno medio y supervivencia de la civilización 0 jugando mode0 contra mode1.
+
+    Con full=True devuelve además retorno, supervivencia y disparos por episodio de ambas.
+    """
     env = build_env(lethality, PERIODO_ALEATORIO, steps, env_over)
     reset, step = jax.jit(jax.vmap(env.reset)), jax.jit(jax.vmap(env.step))
     shelter, share, k = env.n_discrete - 1, 3 + env.cfg.n_symbols, env.cfg.n_symbols
@@ -56,6 +62,12 @@ def run_pair(
             target = jnp.argmax(mask, axis=-1)
             act = jnp.where(jnp.any(mask, axis=-1) & ~fired[:, idx], 4 + k + target, 0)
             return jnp.where(obs.alive[:, idx], act, 1).astype(jnp.int32)
+        if mode == "ataque_solo":
+            base = decide(state, first, second, MARGIN, "solo", PERIODO_ALEATORIO, shelter, share)
+            base = base[:, idx]
+            mask = obs.det_mask[:, idx]
+            fire = jnp.any(mask, axis=-1) & ~fired[:, idx] & (base != shelter)
+            return jnp.where(fire, 4 + k + jnp.argmax(mask, axis=-1), base).astype(jnp.int32)
         acts = decide(state, first, second, MARGIN, mode, PERIODO_ALEATORIO, shelter, share)
         return acts[:, idx]
 
@@ -67,6 +79,16 @@ def run_pair(
         first, second = update_bursts(out.state.last_burst, state.last_burst, first, second)
         total += out.reward
         state, obs = out.state, out.obs
+    if full:
+        shots = fired.mean(axis=0)
+        return (
+            float(total[:, 0].mean()),
+            float(state.alive[:, 0].mean()),
+            float(total[:, 1].mean()),
+            float(state.alive[:, 1].mean()),
+            float(shots[0]),
+            float(shots[1]),
+        )
     return float(total[:, 0].mean()), float(state.alive[:, 0].mean())
 
 
@@ -80,8 +102,9 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=200)
     p.add_argument("--p-kill", type=float)
     p.add_argument("--cancel", action="store_true", help="env.projectiles_cancel_on_death")
+    p.add_argument("--set", action="append", default=[], metavar="CLAVE=VALOR", dest="extra")
     args = p.parse_args()
-    over: dict[str, Any] = {}
+    over: dict[str, Any] = {k: yaml.safe_load(v) for k, v in (e.split("=", 1) for e in args.extra)}
     if args.cancel:
         over["env.projectiles_cancel_on_death"] = True
     if args.p_kill is not None:

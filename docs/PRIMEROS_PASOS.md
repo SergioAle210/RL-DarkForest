@@ -139,11 +139,11 @@ entonces habrá un episodio real para abrir en `demo.ipynb`. Los notebooks
 `entrenamiento.ipynb` y `resultados.ipynb` se completarán cuando sus módulos estén listos.
 La visualización lee archivos guardados y no vuelve a ejecutar el entorno.
 
-El barrido actual conserva combinaciones con `signal_speed < proj_speed`; el cargador las
-rechaza. `train.sweep --dry-run` expande las corridas, las valida una por una y falla si hay
-inválidas; el barrido completo tiene 50 de 125 y el grueso 15 de 45. Antes de entrenar hay
-que revisar ese diseño, completar el ejecutor y distinguir tres seeds exploratorias de
-al menos cinco por configuración reportada. TensorBoard sigue pendiente de implementar
+El barrido original tenía combinaciones con `signal_speed < proj_speed` (50 de 125 y 15 de 45
+inválidas); se corrigieron subiendo el mínimo de `signal_speed` a 0.05. `train.sweep --dry-run`
+expande las corridas, las valida una por una y falla si hay inválidas. Antes de entrenar hay
+que completar el ejecutor y distinguir tres seeds exploratorias de al menos cinco por
+configuración reportada. TensorBoard sigue pendiente de implementar
 y verificar como parte de la persistencia.
 
 ## Cómo aprenderá el modelo

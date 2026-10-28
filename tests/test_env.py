@@ -205,6 +205,22 @@ def test_measurement_sharing_and_channel_ablation(channel):
         assert np.all(np.asarray(shared.obs.detections[1, 0, 4:9]) == 0)
 
 
+@pytest.mark.parametrize(("growth", "grower_seen"), [(None, True), (0.0, False)])
+def test_detection_growth_sets_how_visible_growing_is(growth, grower_seen):
+    """Con detection_growth bajo, crecer no delata; compartir delata siempre."""
+    env = environment(detection_low=0, detection_growth=growth)
+    key = jax.random.PRNGKey(11)
+    _, state = env.reset(key)
+    state = state.replace(pos=jnp.array([[0.0, 0.0], [0.05, 0.0]]))
+    step = jax.jit(env.step)
+    grown = step(key, state, jnp.array([0, 1]))
+    assert bool(grown.obs.det_mask[1, 0]) is grower_seen
+    measured = step(key, state, jnp.array([2, 1]))
+    assert not measured.obs.det_mask[1, 0]
+    shared = step(key, measured.state, jnp.array([7, 1]))
+    assert shared.obs.det_mask[1, 0]
+
+
 def test_expired_contacts_are_masked_and_cannot_be_attacked():
     """La memoria de contactos no permite apuntar a información caducada."""
     env = environment(detection_ttl=2)

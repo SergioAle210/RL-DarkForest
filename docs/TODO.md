@@ -29,19 +29,20 @@
 |---|---|---|---|
 | Definir dimensiones físicas, colas, eventos, detecciones persistentes y refugio | Sergio | listo | 2026-10-27 |
 | Incorporar y validar los parámetros físicos de la primera simulación | Sergio | listo | 2026-10-27 |
-| Corregir y validar todas las configuraciones físicas del barrido | | | |
+| Corregir y validar todas las configuraciones físicas del barrido | Ricardo | listo | 2026-10-28 |
 | Implementar reset, step y observaciones para dos y cuatro civilizaciones | Sergio | listo | 2026-10-27 |
 | Implementar señales, proyectiles y recompensa logarítmica | Sergio | listo | 2026-10-27 |
 | Implementar la anomalía, sus proyecciones y los estallidos | Sergio | listo | 2026-10-27 |
 | Probar invariantes, recompensa, reproducibilidad y compilación del entorno | Sergio | listo | 2026-10-27 |
 | Precisar e implementar las señales costosas antes de evaluar H3 | | | |
-| Medir el valor de cooperar frente a un agente solo y fijar una anomalía donde sea medible | Ricardo | en proceso | 2026-10-27 |
+| Medir el valor de cooperar frente a un agente solo y fijar una anomalía donde sea medible | Ricardo | listo | 2026-10-28 |
 | Repetir esa medición con cinco seeds, costo de transmitir y demora de señal | Ricardo | listo | 2026-10-27 |
 | Agregar el riesgo de ataque a la medición y comparar el aporte neto de cooperar contra el miedo | Ricardo | listo | 2026-10-27 |
 | Implementar y medir la cancelación de proyectiles de civilizaciones eliminadas, apagada por defecto | Ricardo | listo | 2026-10-27 |
 | Traer al repo los diagnósticos con políticas fijas y sus pruebas | Ricardo | listo | 2026-10-27 |
 | Reformular H1 y documentar el diagnóstico de diseño con políticas fijas | Ricardo | listo | 2026-10-27 |
-| Decidir si botín, crecimiento silencioso y detección garantizada pasan a ser parámetros del barrido | | | |
+| Implementar y medir la detección graduada de quien crece (detection_growth) | Ricardo | listo | 2026-10-28 |
+| Decidir qué valores de detección base y de crecer entran al barrido, y si el botín y la detección garantizada pasan a ser parámetros | | | |
 
 ## Políticas y modelo
 
@@ -78,7 +79,7 @@
 | Construir el autojuego con oponentes congelados y pérdidas enmascaradas | | | |
 | Integrar la GRU con episodios reales y anomalía activa | | | |
 | Medir y optimizar velocidad, memoria y estabilidad del entrenamiento | | | |
-| Registrar el retorno por iteración para ver la curva de aprendizaje | | | |
+| Registrar el retorno por iteración para ver la curva de aprendizaje | Ricardo | listo | 2026-10-28 |
 
 ## Experimentos y análisis
 

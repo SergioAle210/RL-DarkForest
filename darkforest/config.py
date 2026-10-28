@@ -94,6 +94,7 @@ class EnvConfig:
     initial_resources: float = 1.0
     detection_low: float = 0.05
     detection_high: float = 0.9
+    detection_growth: float | None = None  # None = detection_high: crecer emite en alta
     detection_decay: float = 1.0
     detection_ttl: int = 20
     refuge_duration: int = 1
@@ -128,8 +129,17 @@ class EnvConfig:
         _number("env.detection_high", self.detection_high, maximum=1)
         if self.detection_low > self.detection_high:
             raise ValueError("env.detection_low: no debe superar detection_high")
+        if self.detection_growth is not None:
+            _number("env.detection_growth", self.detection_growth, maximum=1)
+            if not self.detection_low <= self.detection_growth <= self.detection_high:
+                raise ValueError("env.detection_growth: debe estar entre detection_low y high")
         _integer("env.detection_ttl", self.detection_ttl)
         _integer("env.refuge_duration", self.refuge_duration)
+
+    @property
+    def growth_detection(self) -> float:
+        """Detección de una civilización activa; sin valor explícito iguala a detection_high."""
+        return self.detection_high if self.detection_growth is None else self.detection_growth
 
     @property
     def n_discrete(self) -> int:
