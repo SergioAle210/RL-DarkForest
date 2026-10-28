@@ -194,7 +194,10 @@ class DarkForestEnv:
             sig_origin=state.sig_origin.at[signal_slots].set(agents),
             sig_t=state.sig_t.at[signal_slots].set(state.t),
             sig_content=state.sig_content.at[signal_slots].set(content),
-            sig_emission=state.sig_emission.at[signal_slots].set(emission),
+            # 0 baja, 1 activa (crecer) y 2 alta solo en el paso en que transmite o comparte
+            sig_emission=state.sig_emission.at[signal_slots].set(
+                jnp.where((kind == 3) | (kind == 4), 2, emission)
+            ),
             sig_valid=state.sig_valid.at[signal_slots].set(state.alive),
             prj_origin=state.prj_origin.at[projectile_slots].set(agents),
             prj_t=state.prj_t.at[projectile_slots].set(state.t),
@@ -260,7 +263,12 @@ class DarkForestEnv:
         before = cfg.signal_speed * (state.t - state.sig_t)
         after = cfg.signal_speed * (now - state.sig_t)
         reached = (distances <= after) & ((distances > before) | (before == 0))
-        probability = jnp.where(state.sig_emission, cfg.detection_high, cfg.detection_low)
+        level = state.sig_emission
+        probability = jnp.where(
+            level == 2,
+            cfg.detection_high,
+            jnp.where(level == 1, cfg.growth_detection, cfg.detection_low),
+        )
         probability = probability[None, :] * jnp.exp(-cfg.detection_decay * distances)
         received = reached & jax.random.bernoulli(key, probability)
         received &= state.sig_valid[None, :] & state.alive[:, None]

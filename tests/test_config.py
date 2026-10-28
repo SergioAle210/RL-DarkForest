@@ -418,3 +418,35 @@ def test_signal_queue_capacity_covers_the_longest_flight():
         EnvConfig(detection_low=0.9, detection_high=0.1)
     with pytest.raises(ValueError):
         AnomalyConfig(radius=1)
+
+
+def test_every_cell_of_the_real_sweep_is_valid():
+    """Las rejillas de configs/sweep.yaml se construyen sin errores, incluidas las secundarias."""
+    spec = yaml.safe_load((CONFIGS / "sweep.yaml").read_text(encoding="utf-8"))
+    cells = [cell for name in ("grid", "coarse_grid") for cell in expand_grid(spec[name])]
+    cells += [{key: value} for key, values in spec["secondary"].items() for value in values]
+    assert len(cells) == 25 + 9 + 11
+    for cell in cells:
+        assert validate_cell(CONFIGS / "base.yaml", {**cell, "train.seed": 0}) is None, cell
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [
+        (-0.1, ValueError),
+        (1.1, ValueError),
+        (0.95, ValueError),
+        (True, TypeError),
+        ("0.5", TypeError),
+    ],
+)
+def test_detection_growth_is_validated(value, error):
+    """La detección de crecer es un número entre detection_low y detection_high."""
+    with pytest.raises(error):
+        EnvConfig(detection_low=0.05, detection_high=0.9, detection_growth=value)
+
+
+def test_detection_growth_defaults_to_the_high_level():
+    """Sin valor explícito, crecer emite como detection_high; con valor, usa el indicado."""
+    assert EnvConfig().growth_detection == 0.9
+    assert EnvConfig(detection_growth=0.05).growth_detection == 0.05

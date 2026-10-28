@@ -130,6 +130,48 @@ hay dos equilibrios, crecimiento mutuo y ataque mutuo, y ninguna estrategia domi
 estructura de un juego de coordinación, pero no es un objetivo de diseño: es lo que ocurre al
 cambiar esa regla.
 
+## Hallazgo 4: el costo de cooperar depende de cuánto se ve quien crece
+
+Hasta aquí cooperar nunca costaba exposición, porque crecer ya emitía en alta. El parámetro
+`env.detection_growth` fija la probabilidad de detección de quien crece (sin valor, igual a
+`detection_high`, el comportamiento anterior). Transmitir y compartir siguen emitiendo en alta
+solo en el paso en que se hacen. Se midieron tres escenarios con λ = 0.5, `p_kill` 0.75 y la
+cancelación de proyectiles apagada. Estrategias: solo (crece y se protege de la anomalía),
+coop_real (comparte mediciones) y ataque_solo (como solo, pero dispara una vez al primer
+contacto). Retorno de la fila contra la columna; la columna "coop" es un compañero que
+también coopera.
+
+| Escenario | solo contra solo | coop contra coop | solo contra atacante | coop contra atacante | atacante contra atacante |
+|---|---|---|---|---|---|
+| actual (crecer emite en alta) | +7.196 | +7.754 | +1.435 | +1.340 | +1.421 |
+| `detection_growth` 0.05 | +7.196 | +7.754 | +2.052 | +1.331 | +3.455 |
+| `detection_low` y `detection_growth` 0.001 | +7.196 | +7.754 | +6.539 | +1.340 | +6.557 |
+
+Probabilidad de atacante a partir de la cual cooperar deja de compensar, calculada con las
+celdas anteriores: q = (aporte de cooperar con un compañero que coopera) / (ese aporte más lo
+que se pierde al cooperar con un atacante). El aporte es 7.754 - 7.196 = 0.558.
+
+| Escenario | Pérdida al cooperar con un atacante | Umbral de probabilidad de atacante |
+|---|---|---|
+| actual | 0.095 | 85% |
+| `detection_growth` 0.05 | 0.721 | 44% |
+| 0.001 | 5.199 | 10% |
+
+- Con las reglas actuales cooperar casi no expone: es lo que hacía trivial la pregunta del
+  proyecto. Bajar la detección de quien crece hace que compartir sea el único acto visible, y
+  el umbral de confianza necesario para cooperar baja de 85% a 10%. Es el "miedo" que la
+  propuesta pide comparar con el valor de la cooperación.
+- Con detección muy baja casi nadie descubre a nadie (solo contra atacante rinde +6.539, cerca
+  de +7.196) y cooperar equivale a gritar: el atacante detecta los envíos y mata. Es la
+  estructura del bosque oscuro.
+- Con 0.05 aparece una ventaja de primer golpe sin cancelar proyectiles: atacar contra un
+  atacante rinde +3.455 y sobrevive 0.44, contra +2.052 y 0.29 de un crecedor. Los atacantes
+  se detectan en momentos muy distintos y quien detecta primero mata al otro antes de que
+  detecte y dispare (0.60 disparos por episodio contra 0.80 si solo uno ataca). Con detección
+  alta ambos se detectan casi a la vez y no hay ventaja.
+- No se eligió el valor de `detection_growth`: son tres puntos, no un barrido. Qué valores entran
+  al barrido principal queda por decidir y debe reportarse con sensibilidad.
+
 ## Comprobación de la H1 reformulada
 
 H1 dice que con λ = 0 la cooperación no tiene valor. Con políticas fijas:
@@ -164,12 +206,14 @@ Cambios implementados, todos apagados o neutros por defecto:
 |---|---|---|
 | `anomaly.period_spread` | El periodo se sortea por episodio en [period - k, period + k] | 0 en el código (comportamiento anterior) y 8 en `configs/base.yaml`. Es un arreglo de fidelidad: la propuesta define θ con el periodo como parámetro oculto (sección 3.2) y prevé el riesgo "el canal se ignora", que ocurre si θ es identificable con una sola proyección. Con periodo fijo lo era. El valor 8 es libre |
 | `env.projectiles_cancel_on_death` | El proyectil de una civilización eliminada no impacta | False: un proyectil ya lanzado sigue su camino aunque muera quien lo lanzó. Una civilización muerta nunca lanza ataques nuevos en ningún caso |
+| `env.detection_growth` | Probabilidad de detección de quien crece; transmitir y compartir siguen emitiendo en alta en su paso | Sin valor (igual a `detection_high`), el comportamiento anterior. Con un valor bajo crecer es silencioso y cooperar expone |
 
-Pendientes de decisión, sin implementar: botín al atacar, crecer sin emitir en alto y
-detección garantizada al transmitir o compartir. Con 200 pasos casi todo emisor es descubierto
-aunque emita en bajo (0.05 por la distancia da cerca de 99.9% en 200 pasos), así que exponer
-a quien coopera exigiría también crecer en silencio y una detección baja mucho menor, lo que
-contradice que crecer ponga la emisión en alta (sección 3.3 de la propuesta).
+Pendientes de decisión: qué valores de `detection_growth` y `detection_low` entran al barrido
+(por defecto no cambia nada, pero la sección 3.3 de la propuesta dice que crecer pone la
+emisión en alta, y bajarla es un cambio de esa regla que debe declararse), el botín al atacar y
+la detección garantizada al transmitir o compartir. Con 200 pasos casi todo emisor es descubierto
+si emite a 0.05 por la distancia (cerca de 99.9%), por eso la exposición de cooperar solo pesa
+con una detección base muy baja.
 
 ## Límites
 

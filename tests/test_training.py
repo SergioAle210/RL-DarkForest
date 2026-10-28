@@ -7,11 +7,18 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from darkforest.config import Config, EnvConfig, LoggingConfig, SelfPlayConfig, TrainConfig
+from darkforest.config import (
+    ACTIONS,
+    Config,
+    EnvConfig,
+    LoggingConfig,
+    SelfPlayConfig,
+    TrainConfig,
+)
 from darkforest.env import DarkForestEnv
 from darkforest.trajectories import load_episode
 from train.episodes import checkpoint_policy, collect_episode
-from train.ippo import compute_gae, initialize, make_rollout, train
+from train.ippo import compute_gae, initialize, make_rollout, rollout_metrics, train
 from train.logging_utils import run_dir
 
 
@@ -44,6 +51,22 @@ def test_gae_matches_hand_calculation_and_time_limit_bootstrap():
     np.testing.assert_allclose(truncated, [[8.6], [10.0]], atol=1e-6)
 
 
+def test_rollout_metrics_match_a_hand_calculation():
+    """Cuenta solo agentes vivos: recompensa por paso, muertes y uso de cada acción."""
+    batch = {
+        "actions": jnp.array([[[0, 12]], [[7, 1]]]),
+        "rewards": jnp.array([[[0.1, -0.02]], [[0.2, 0.0]]]),
+        "valid": jnp.array([[[True, True]], [[True, False]]]),
+        "terminated": jnp.array([[[False, False]], [[True, True]]]),
+    }
+    metrics = rollout_metrics(batch, DarkForestEnv(EnvConfig(n_civs=2)))
+    assert float(metrics["mean_reward"]) == pytest.approx(0.28 / 3)
+    assert float(metrics["death_rate"]) == pytest.approx(1 / 3)
+    expected = {"crecer": 1 / 3, "refugiarse": 1 / 3, "compartir": 1 / 3}
+    for name in ACTIONS:
+        assert float(metrics[f"action_{name}"]) == pytest.approx(expected.get(name, 0))
+
+
 def test_rollout_preserves_memory_and_resets_at_episode_boundaries():
     """Un fragmento intermedio conserva carry y un episodio nuevo lo reinicia."""
     cfg = tiny_config()
@@ -74,6 +97,9 @@ def test_training_updates_and_checkpoint_replays(tmp_path):
     report = json.loads((directory / "evaluation.json").read_text())
     assert report["parameter_delta_norm"] > 0
     assert int(state.step) == 2
+    rows = [json.loads(line) for line in (directory / "training.jsonl").read_text().splitlines()]
+    assert {"mean_reward", "death_rate", "action_crecer"} <= set(rows[0])
+    assert sum(rows[0][f"action_{name}"] for name in ACTIONS) == pytest.approx(1)
     restored_cfg, policy = checkpoint_policy(directory / "checkpoints/final.msgpack")
     assert restored_cfg == cfg
     evaluation_key = jax.random.split(jax.random.PRNGKey(cfg.train.seed), 3)[2]

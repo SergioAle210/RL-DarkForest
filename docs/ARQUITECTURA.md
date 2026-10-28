@@ -309,7 +309,7 @@ que la capa artística permanece como extensión.
 |---|---|
 | Preparación de herramientas por equipo | G-01: reproducir la instalación y las comprobaciones de la guía en cada máquina |
 | Decisiones físicas concretadas en la versión inicial | A-01/A-02: revisar su adecuación científica antes de los experimentos finales |
-| `proj_speed=0.05`, pero el barrido incluye `signal_speed=0.01` y `0.0316` | A-02/D-03: validar todas las combinaciones y corregir el diseño físico antes de entrenar |
+| `proj_speed=0.05`, pero el barrido incluía `signal_speed=0.01` y `0.0316` | A-02/D-03: el mínimo de `signal_speed` pasó a 0.05 y una prueba valida todas las celdas; el régimen de señales más lentas queda sin explorar |
 | Reanudación de entrenamiento por CLI y backend W&B | C-02: completar estas rutas; TensorBoard local y checkpoint para inferencia ya funcionan |
 | `payoff_matrix(env_cfg, ...)` sugiere simulación dentro de análisis | C-06/D-05: evaluar en `train/` y calcular pagos en `analysis/` desde archivos |
 | `costly_signals` sin mecanismo definido | A-06/D-07: especificar y probar costo/verificabilidad antes de H3 |

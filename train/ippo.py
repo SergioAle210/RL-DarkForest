@@ -17,7 +17,7 @@ import optax
 from flax import serialization, struct
 from flax.training.train_state import TrainState
 
-from darkforest.config import Config, load_config
+from darkforest.config import ACTIONS, Config, load_config
 from darkforest.env import DarkForestEnv
 from darkforest.networks import ActorCriticGRU, NetworkPolicy, flatten_obs
 from darkforest.types import EnvState, Obs
@@ -171,6 +171,20 @@ def ppo_loss(params, batch, cfg: Config):
     return loss, {"loss": loss, "actor_loss": actor, "value_loss": critic, "entropy": entropy}
 
 
+def rollout_metrics(batch: dict, env: DarkForestEnv) -> dict[str, jax.Array]:
+    """Recompensa por paso, muertes y uso de cada familia de acciones en un rollout."""
+    valid = batch["valid"]
+    count = jnp.maximum(valid.sum(), 1)
+    kind, _ = env.decode_action(batch["actions"])
+    metrics = {
+        "mean_reward": (batch["rewards"] * valid).sum() / count,
+        "death_rate": (valid & batch["terminated"]).sum() / count,
+    }
+    for index, name in enumerate(ACTIONS):
+        metrics[f"action_{name}"] = ((kind == index) & valid).sum() / count
+    return metrics
+
+
 def make_update(cfg: Config):
     """Compila una actualización con gradientes recurrentes y recorte de norma."""
 
@@ -224,6 +238,7 @@ def train(cfg: Config, name: str) -> TrainState:
             )
             for _ in range(cfg.train.update_epochs):
                 state, metrics = update(state, batch)
+            metrics = {**metrics, **rollout_metrics(batch, env)}
             metrics = {name: float(value) for name, value in metrics.items()}
             if not all(np.isfinite(value) for value in metrics.values()):
                 raise FloatingPointError("El entrenamiento produjo métricas no finitas")

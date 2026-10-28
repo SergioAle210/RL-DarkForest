@@ -25,8 +25,8 @@ make sweep-coarse         # barrido 3x3
 
 `make sanity` y el ejecutor del barrido requieren completar el autojuego y los experimentos.
 `--dry-run` expande combinaciones y construye la configuración de cada corrida; marca las
-inválidas, cuenta los totales y termina con error si hay alguna. Los YAML del barrido
-todavía contienen celdas inválidas que deben corregirse.
+inválidas, cuenta los totales y termina con error si hay alguna. Todas las celdas de los YAML
+del barrido son válidas y una prueba lo comprueba.
 Los entrenamientos de comprobación usan `aprendizaje_dos.yaml` y `aprendizaje_cuatro.yaml`,
 con `rho=0`. El contrato operativo y la entrega al equipo están en `docs/EPISODIOS.md`.
 
