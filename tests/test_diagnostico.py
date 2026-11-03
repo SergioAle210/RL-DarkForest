@@ -73,3 +73,16 @@ def test_baselines_usan_el_radio_de_la_anomalia() -> None:
         return baseline_returns(cfg, 1, 64)["ignorar"][1]
 
     assert survival(0.6) < survival(0.1) - 0.2
+
+
+def test_ablacion_canal_no_afecta_a_quien_no_lo_usa_y_si_a_coop_real() -> None:
+    """Sin fuga: ignorar y solo no cambian al apagar el canal; coop_real depende de él."""
+    import numpy as np
+
+    from train.ablacion_canal import measure_cell
+
+    cell = measure_cell(1.0, 0.45, seeds=2, episodes=48, steps=80, margin=0.2)
+    for mode in ("ignorar", "solo"):
+        assert cell[f"{mode}_on"] == cell[f"{mode}_off"]
+    on, off = (np.mean(cell[f"coop_real_{k}"]["return"]) for k in ("on", "off"))
+    assert on > off + 0.5
