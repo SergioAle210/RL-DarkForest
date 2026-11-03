@@ -21,6 +21,7 @@ def run_dir(cfg: Config, name: str) -> Path:
     """Identifica la configuración sin seed y evita colisiones entre overrides."""
     resolved = to_dict(cfg)
     resolved["train"].pop("seed")
+    resolved["train"].pop("checkpoint_every")
     resolved["logging"].pop("out_dir")
     digest = hashlib.sha256(json.dumps(resolved, sort_keys=True).encode()).hexdigest()[:10]
     label = re.sub(r"[^a-zA-Z0-9_-]+", "-", Path(name).stem).strip("-") or "corrida"
@@ -60,18 +61,35 @@ def create_run(cfg: Config, name: str, mode: str) -> Path:
     return directory
 
 
+def record_resume(directory: Path, iteration: int, total_steps: int) -> None:
+    """Anota en metadata.json cada reanudación para que la procedencia no se pierda."""
+    path = directory / "metadata.json"
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    metadata.setdefault("resumes", []).append(
+        {
+            "iteration": iteration,
+            "total_steps": total_steps,
+            "devices": [str(d) for d in jax.devices()],
+        }
+    )
+    path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+
 class Logger:
     """Fachada sobre TensorBoard o W&B; guarda `config.yaml` al iniciar."""
 
-    def __init__(self, cfg: Config, name: str) -> None:
-        """Abre registros locales; W&B requiere una integración posterior explícita."""
+    def __init__(self, cfg: Config, name: str, resume: Path | None = None) -> None:
+        """Abre registros locales; con resume continúa en el directorio de una corrida previa.
+
+        W&B requiere una integración posterior explícita.
+        """
         if cfg.logging.backend != "tensorboard":
             raise NotImplementedError("Este bloque usa TensorBoard local")
         from tensorboard.summary.writer.event_file_writer import EventFileWriter
 
-        self.dir = create_run(cfg, name, "entrenamiento_exploratorio")
+        self.dir = resume or create_run(cfg, name, "entrenamiento_exploratorio")
         self.writer = EventFileWriter(str(self.dir / "tensorboard"))
-        self.metrics = (self.dir / "training.jsonl").open("x", encoding="utf-8")
+        self.metrics = (self.dir / "training.jsonl").open("a" if resume else "x", encoding="utf-8")
 
     def log(self, step: int, metrics: dict[str, float]) -> None:
         """Escribe las métricas como JSONL y eventos de TensorBoard."""

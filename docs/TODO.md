@@ -63,7 +63,7 @@
 | Resolver y verificar la dependencia de TensorBoard | Sergio | listo | 2026-10-27 |
 | Ejecutar y recargar episodios de la política aleatoria y los arquetipos | Sergio | listo | 2026-10-27 |
 | Cargar un checkpoint para generar episodios sin volver a entrenar | Sergio | listo | 2026-10-27 |
-| Reanudar un entrenamiento interrumpido desde la CLI | | | |
+| Reanudar un entrenamiento interrumpido desde la CLI | Bianca | listo | 2026-11-02 |
 | Evaluar políticas en train y exportar resultados para análisis | | | |
 | Integrar simulación, guardado, métricas y reproducción de episodios | Sergio | listo | 2026-10-27 |
 | Documentar cómo compartir código, corridas y modelos entre compañeros | Sergio | listo | 2026-10-27 |

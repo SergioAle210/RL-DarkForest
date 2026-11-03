@@ -139,3 +139,52 @@ def test_checkpoint_evaluation_reports_consistent_rates():
     assert 0 <= result["survival"] <= 1
     assert sum(result[f"action_{name}"] for name in ACTIONS) == pytest.approx(1)
     assert np.isfinite(result["mean_return"])
+
+
+def test_resume_matches_an_uninterrupted_run(tmp_path):
+    """Continuar desde ultimo.msgpack da los mismos pesos y métricas que entrenar sin cortes."""
+    import json
+
+    from flax import serialization
+
+    full = replace(
+        tiny_config(tmp_path / "continua"), train=replace(tiny_config().train, total_steps=16)
+    )
+    train(full, "prueba")
+    cut = tiny_config(tmp_path / "cortada")
+    train(cut, "prueba")
+    directory = run_dir(cut, "prueba")
+    longer = replace(cut, train=replace(cut.train, total_steps=16))
+    train(longer, "prueba", resume=directory)
+
+    def final_params(folder):
+        data = serialization.msgpack_restore((folder / "checkpoints/final.msgpack").read_bytes())
+        return jax.tree.leaves(data["train_state"]["params"])
+
+    for a, b in zip(final_params(run_dir(full, "prueba")), final_params(directory), strict=True):
+        np.testing.assert_array_equal(a, b)
+    rows = lambda folder: (folder / "training.jsonl").read_text().splitlines()  # noqa: E731
+    assert [json.loads(r)["step"] for r in rows(directory)] == [4, 8, 12, 16]
+    assert rows(directory) == rows(run_dir(full, "prueba"))
+    metadata = json.loads((directory / "metadata.json").read_text())
+    assert metadata["resumes"][0]["iteration"] == 2
+    with pytest.raises(ValueError):
+        train(longer, "prueba", resume=directory)
+
+
+def test_checkpoint_every_writes_a_resumable_checkpoint(tmp_path):
+    """Con checkpoint_every se guarda ultimo.msgpack con la iteración antes del final."""
+    from flax import serialization
+
+    base = tiny_config(tmp_path)
+    cfg = replace(base, train=replace(base.train, total_steps=16, checkpoint_every=1))
+    train(cfg, "prueba")
+    directory = run_dir(cfg, "prueba")
+    saved = serialization.msgpack_restore((directory / "checkpoints/ultimo.msgpack").read_bytes())
+    assert int(saved["iteration"]) == 4
+    assert run_dir(cfg, "prueba") == run_dir(base_with_total(base, 16), "prueba")
+
+
+def base_with_total(cfg, total):
+    """Misma configuración con otro presupuesto, para comparar identificadores."""
+    return replace(cfg, train=replace(cfg.train, total_steps=total))

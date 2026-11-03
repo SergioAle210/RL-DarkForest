@@ -185,6 +185,7 @@ class TrainConfig:
     self_play: SelfPlayConfig = SelfPlayConfig()
     update_epochs: int = 4
     max_grad_norm: float = 0.5
+    checkpoint_every: int = 0  # iteraciones entre checkpoints reanudables; 0 = solo al final
 
     def __post_init__(self) -> None:
         """Valida el entrenamiento y el dominio de seeds de 32 bits."""
@@ -200,6 +201,7 @@ class TrainConfig:
             _number(f"train.{name}", getattr(self, name))
         _require_type("train.self_play", self.self_play, SelfPlayConfig)
         _integer("train.update_epochs", self.update_epochs)
+        _integer("train.checkpoint_every", self.checkpoint_every, minimum=0)
         _number("train.max_grad_norm", self.max_grad_norm, positive=True)
 
 

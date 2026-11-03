@@ -1,12 +1,14 @@
 """IPPO con parámetros compartidos, GRU y autojuego ficticio.
 
 Uso: python -m train.ippo --config configs/base.yaml [clave=valor ...]
+     python -m train.ippo --resume runs/<config>/<seed> [train.total_steps=N]
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +24,7 @@ from darkforest.env import DarkForestEnv
 from darkforest.networks import ActorCriticGRU, NetworkPolicy, flatten_obs
 from darkforest.types import EnvState, Obs
 from train.episodes import collect_episode, save_episode
-from train.logging_utils import Logger
+from train.logging_utils import Logger, record_resume
 
 
 @struct.dataclass
@@ -231,8 +233,24 @@ def run_iteration(
     return state, runner, key, {**metrics, **rollout_metrics(batch, env)}
 
 
-def train(cfg: Config, name: str) -> TrainState:
-    """Entrena IPPO recurrente y guarda un checkpoint y episodios de comparación."""
+def save_checkpoint(
+    directory: Path, state: TrainState, runner: RunnerState, key: jax.Array, iteration: int
+) -> None:
+    """Escribe ultimo.msgpack de forma atómica para que una interrupción no lo deje a medias."""
+    folder = directory / "checkpoints"
+    folder.mkdir(exist_ok=True)
+    payload = {"train_state": state, "runner": runner, "key": key, "iteration": iteration}
+    temporary = folder / "ultimo.msgpack.tmp"
+    temporary.write_bytes(serialization.to_bytes(payload))
+    os.replace(temporary, folder / "ultimo.msgpack")
+
+
+def train(cfg: Config, name: str, *, resume: Path | None = None) -> TrainState:
+    """Entrena IPPO recurrente y guarda un checkpoint y episodios de comparación.
+
+    Con resume continúa desde checkpoints/ultimo.msgpack de esa corrida, con el mismo estado,
+    memoria y llave aleatoria, de modo que el resultado coincide con el de una corrida seguida.
+    """
     env = DarkForestEnv(cfg.env)
     rollout = jax.jit(make_rollout(env, cfg))
     chunk = cfg.train.n_envs * cfg.train.rollout_len
@@ -244,12 +262,26 @@ def train(cfg: Config, name: str) -> TrainState:
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
     assignment = jnp.full((cfg.train.n_envs, cfg.env.n_civs), -1)
     update = make_update(cfg)
-    logger = Logger(cfg, name)
+    total = cfg.train.total_steps // chunk
+    start = 0
+    if resume is not None:
+        saved = resume / "checkpoints" / "ultimo.msgpack"
+        target = {"train_state": state, "runner": runner, "key": key, "iteration": 0}
+        restored = serialization.from_bytes(target, saved.read_bytes())
+        state, runner, key = restored["train_state"], restored["runner"], restored["key"]
+        start = int(restored["iteration"])
+        if start >= total:
+            raise ValueError(
+                f"train.total_steps: la corrida ya hizo {start} de {total} iteraciones"
+            )
+        record_resume(resume, start, cfg.train.total_steps)
+    logger = Logger(cfg, name, resume)
     print(f"Corrida: {logger.dir}", flush=True)
     try:
-        before = collect_episode(env, NetworkPolicy(model, state.params), evaluation_key)
-        save_episode(logger.dir, before, cfg=cfg, policy_name="red_inicial", episode_id=1)
-        for index in range(cfg.train.total_steps // chunk):
+        before = collect_episode(env, NetworkPolicy(model, initial_params), evaluation_key)
+        if resume is None:
+            save_episode(logger.dir, before, cfg=cfg, policy_name="red_inicial", episode_id=1)
+        for index in range(start, total):
             state, runner, key, metrics = run_iteration(
                 cfg, env, rollout, update, state, runner, key, assignment
             )
@@ -257,8 +289,12 @@ def train(cfg: Config, name: str) -> TrainState:
             if not all(np.isfinite(value) for value in metrics.values()):
                 raise FloatingPointError("El entrenamiento produjo métricas no finitas")
             logger.log((index + 1) * chunk, metrics)
+            every = cfg.train.checkpoint_every
+            if every and (index + 1) % every == 0 and index + 1 < total:
+                save_checkpoint(logger.dir, state, runner, key, index + 1)
         final = collect_episode(env, NetworkPolicy(model, state.params), evaluation_key)
-        save_episode(logger.dir, final, cfg=cfg, policy_name="red_entrenada", episode_id=2)
+        episode_id = len(list((logger.dir / "trajectories").glob("episode_*.npz"))) + 1
+        save_episode(logger.dir, final, cfg=cfg, policy_name="red_entrenada", episode_id=episode_id)
         delta = float(
             optax.tree.norm(jax.tree.map(lambda a, b: a - b, state.params, initial_params))
         )
@@ -272,10 +308,11 @@ def train(cfg: Config, name: str) -> TrainState:
         }
         (logger.dir / "evaluation.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         checkpoints = logger.dir / "checkpoints"
-        checkpoints.mkdir()
+        checkpoints.mkdir(exist_ok=True)
         (checkpoints / "final.msgpack").write_bytes(
             serialization.to_bytes({"train_state": state, "runner": runner, "key": key})
         )
+        save_checkpoint(logger.dir, state, runner, key, total)
         print(json.dumps(report), flush=True)
     finally:
         logger.close()
@@ -295,11 +332,24 @@ def evaluate(cfg: Config, params: Any, key: jax.Array) -> dict[str, float]:
 def main() -> None:
     """Carga una configuración y ejecuta el presupuesto de entrenamiento indicado."""
     p = argparse.ArgumentParser()
-    p.add_argument("--config", required=True)
+    source = p.add_mutually_exclusive_group(required=True)
+    source.add_argument("--config")
+    source.add_argument("--resume", help="directorio de una corrida con checkpoints/ultimo.msgpack")
     p.add_argument("--name")
     p.add_argument("overrides", nargs="*", help="clave.punteada=valor")
     args = p.parse_args()
     overrides = {k: _parse(v) for k, v in (o.split("=", 1) for o in args.overrides)}
+    if args.resume:
+        allowed = {"train.total_steps", "train.checkpoint_every"}
+        if not set(overrides) <= allowed:
+            p.error(f"al reanudar solo se pueden cambiar {sorted(allowed)}")
+        directory = Path(args.resume)
+        train(
+            load_config(directory / "config.yaml", overrides),
+            directory.parent.name,
+            resume=directory,
+        )
+        return
     cfg = load_config(args.config, overrides)
     train(cfg, name=args.name or Path(args.config).stem)
 
