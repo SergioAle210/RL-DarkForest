@@ -20,6 +20,7 @@ uv run python -m train.matriz_pagos --lethality 0
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 0.75
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 1.0
 uv run python -m train.pagos_rejilla --out-dir runs/pagos --set env.detection_growth=0.05
+uv run python -m train.ablacion_canal --out-dir runs/ablacion_canal
 ```
 
 Las pruebas con valores calculables están en `tests/test_diagnostico.py`.
@@ -223,6 +224,103 @@ Ninguna política que usa el canal supera a ignorar (+9.065), y compartir cuesta
 Que coop_ideal supere a solo por +0.03 o +0.07 no contradice H1: solo se refugia sin necesidad
 con λ = 0 y la política con información exacta lo hace menos veces. La comparación válida es
 contra ignorar. Falta la comprobación con agentes entrenados (ablación del canal con λ = 0).
+
+## Costo de ignorar (A09)
+
+Con el radio 0.25 de la zona, una civilización que nunca se refugia sobrevive el 79% de los
+episodios: la letalidad casi no importa porque la posición es fija y, con unos nueve estallidos
+por episodio, cualquier civilización dentro de la zona muere con λ ≥ 0.5. Lo que decide cuánto
+cuesta ignorar es el área de la zona, no λ. Sin tocar la recompensa:
+
+| radio | crecer (ignorar) | solo | coop_real | oráculo | aporte de coop_real sobre ignorar |
+|---|---|---|---|---|---|
+| 0.25 | +7.03 | +6.82 | +7.81 | +8.95 | +0.78 |
+| 0.40 | +4.02 | +3.86 | +6.97 | +8.79 | +2.95 |
+| 0.55 | +0.45 | +0.40 | +6.18 | +8.59 | +5.73 |
+
+Dos civilizaciones, λ = 1, c = 1, 3 seeds, 200 episodios. Con el radio base cooperar mejora el
+retorno cerca de 11%, que coincide con lo observado en las corridas de la red. Las rejillas 3×3
+completas con radios 0.25, 0.35 y 0.45 están en `runs/pagos_r*`. `solo` rinde igual que ignorar
+en todos los radios: medir sin compartir no alcanza para anticipar el estallido.
+
+Corrida corta con `configs/costo_ignorar.yaml` (radio 0.45, 2.1 M pasos, CPU): retorno +2.22 y
+supervivencia 0.33, crece el 95% del tiempo. Las políticas fijas obtienen ignorar +2.67 (0.34),
+solo +3.53, coop_real +6.88 y oráculo +8.71. Con 2 M pasos la red no supera a ignorar. Esta comparación exigió corregir `baseline_returns`, que no pasaba el radio y
+medía las políticas fijas en el mundo de radio 0.25.
+
+Cinco seeds de 10.5 M pasos con la misma config (Kaggle, CPU, `kaggle/run.py`; corridas en
+`runs/costo_ignorar-f8b2146ed7/`), evaluadas con 400 episodios:
+
+| seed | retorno | supervivencia | crecer | refugiarse | atacar |
+|---|---|---|---|---|---|
+| 0 | +1.88 | 0.36 | 0.72 | 0.23 | 0.001 |
+| 1 | +1.46 | 0.26 | 0.82 | 0.13 | 0.005 |
+| 2 | +1.90 | 0.34 | 0.78 | 0.15 | 0.002 |
+| 3 | +2.30 | 0.35 | 0.91 | 0.06 | 0.001 |
+| 4 | +1.93 | 0.34 | 0.78 | 0.17 | 0.001 |
+| media ± error estándar | +1.89 ± 0.13 | 0.33 | | | |
+
+Ninguna seed alcanza a ignorar (+2.77, supervivencia 0.36), solo (+3.71) ni coop_real (+6.94).
+Las cinco aprenden a refugiarse (6% a 23% del tiempo) sin saber cuándo, y transmitir o compartir
+quedan por debajo del 2%. Con radio 0.45 y 10.5 M pasos H1 y H2 no tienen evidencia a favor ni en
+contra: la red no usa el canal. Falta saber si más pasos o una GPU cambian el patrón.
+
+## Ablación del canal con políticas fijas
+
+`train.ablacion_canal` mide ignorar, solo y coop_real con `env.channel_enabled` encendido y
+apagado. Dos civilizaciones, periodo aleatorio, c = 1, margen 0.2 para coop_real, 5 seeds y
+200 episodios. La diferencia se calcula por seed (mismas semillas con y sin canal) y el ± es el
+error estándar. "Aporte" es coop_real con canal menos la mejor de ignorar y solo.
+
+| λ | radio | coop_real con canal | sin canal | diferencia por apagar | aporte del canal |
+|---|---|---|---|---|---|
+| 0 | 0.25 | +8.383 | +8.337 | +0.046 ± 0.007 | -0.682 ± 0.005 |
+| 0 | 0.45 | +8.215 | +8.258 | -0.043 ± 0.004 | -0.850 ± 0.004 |
+| 0.25 | 0.25 | +8.061 | +7.315 | +0.746 ± 0.106 | +0.378 ± 0.113 |
+| 0.25 | 0.45 | +7.678 | +5.240 | +2.438 ± 0.115 | +2.495 ± 0.150 |
+| 0.5 | 0.25 | +7.917 | +6.840 | +1.076 ± 0.112 | +0.677 ± 0.128 |
+| 0.5 | 0.45 | +7.254 | +3.643 | +3.611 ± 0.143 | +3.543 ± 0.153 |
+| 1 | 0.25 | +7.778 | +6.508 | +1.270 ± 0.098 | +0.709 ± 0.106 |
+| 1 | 0.45 | +6.681 | +2.503 | +4.178 ± 0.139 | +3.900 ± 0.151 |
+
+- **No hay fuga de información.** Ignorar y solo dan retornos idénticos con y sin canal en las
+  ocho celdas, seed por seed. Lo que difiere es solo lo que usa el canal.
+- **H1 con políticas fijas.** Con λ = 0 apagar el canal cambia coop_real en menos de 0.05, con
+  signo distinto según el radio, es decir cerca de 0.5% del retorno y no sistemático. No es
+  exactamente cero: coop_real se refugia distinto cuando recibe una medición, aunque con λ = 0
+  refugiarse no sirve de nada. Lo que sí se cumple es que el canal no vale nada: ignorar rinde
+  entre 0.68 y 0.85 más que coop_real. Con agentes entrenados falta la misma ablación.
+- **Con λ > 0 el canal sí importa y su aporte crece con λ y con el radio.** En radio 0.25 sube
+  de +0.38 a +0.71, y en radio 0.45 de +2.50 a +3.90. Sin canal coop_real queda cerca de solo
+  o por debajo (paga el costo de compartir y no recibe nada). Es la forma que predice H2 para
+  estas estrategias, sin ser evidencia de aprendizaje.
+- **Lectura para el entrenamiento.** El valor del canal que una red podría descubrir es +0.7
+  con el radio base y +3.9 con 0.45 en λ = 1. Las cinco redes entrenadas con radio 0.45
+  (+1.89) quedaron por debajo de ignorar, así que el techo existe pero no lo encuentran.
+- **Mensajes barajados** (`env.shuffle_messages`, implementado en esta rama). El mensaje conserva
+  emisor, símbolo, llegada y ángulo de observación, pero su medición se cambia por la de un θ
+  independiente, como si viniera de otro episodio. Isola si importa que el mensaje sea verdadero
+  o solo que llegue. Retorno de coop_real:
+
+| λ | radio | con canal | sin canal | barajado | quita barajar |
+|---|---|---|---|---|---|
+| 0 | 0.25 | +8.383 | +8.337 | +8.430 | -0.047 ± 0.009 |
+| 0 | 0.45 | +8.215 | +8.258 | +8.267 | -0.052 ± 0.003 |
+| 0.25 | 0.25 | +8.061 | +7.315 | +7.310 | +0.751 ± 0.093 |
+| 0.25 | 0.45 | +7.678 | +5.240 | +5.860 | +1.818 ± 0.127 |
+| 0.5 | 0.25 | +7.917 | +6.840 | +6.880 | +1.037 ± 0.097 |
+| 0.5 | 0.45 | +7.254 | +3.643 | +4.110 | +3.144 ± 0.155 |
+| 1 | 0.25 | +7.778 | +6.508 | +6.588 | +1.190 ± 0.104 |
+| 1 | 0.45 | +6.681 | +2.503 | +2.607 | +4.074 ± 0.149 |
+
+  Barajar quita casi todo lo que quita apagar el canal: lo que vale es que el mensaje sea
+  verdadero, no que llegue. En dos celdas (λ de 0.25 y 0.5 con radio 0.45) el barajado recupera
+  entre 0.5 y 0.6 sobre apagar; es probable que refugiarse en un lugar al azar proteja algo
+  cuando la zona cubre más de la mitad del toro, pero no lo verifiqué. Con λ = 0 los tres
+  casos quedan a menos de 0.06 entre sí. Ignorar y solo siguen idénticos en las tres variantes.
+- **Límites.** Son políticas fijas; la misma ablación con redes entrenadas queda pendiente y
+  hoy ninguna red usa el canal. Las señales costosas siguen sin implementar, así que H3
+  queda pendiente.
 
 ## Principio de diseño
 

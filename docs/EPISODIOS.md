@@ -146,8 +146,13 @@ checkpoint y su seed de entrenamiento en los metadatos. La salida va al `runs` l
 `--out-dir` permite elegir otro destino, incluso si el archivo recibido conserva una ruta
 de salida de la máquina de un compañero.
 
-El checkpoint incluye estado para una futura reanudación, pero esta entrega implementa
-su carga para inferencia. La CLI para continuar un entrenamiento interrumpido queda pendiente.
+Un entrenamiento se reanuda con `python -m train.ippo --resume runs/<config>/<seed>`. Con
+`train.checkpoint_every=N` se escribe `checkpoints/ultimo.msgpack` cada N iteraciones y siempre
+al terminar (de forma atómica, con parámetros, optimizador, memoria, entornos, llave aleatoria e
+iteración). Al reanudar solo se pueden cambiar `train.total_steps`, para extender el presupuesto,
+y `train.checkpoint_every`; las métricas se anexan a `training.jsonl`, las reanudaciones quedan
+en `metadata.json` y una prueba comprueba que el resultado coincide bit a bit con una corrida
+sin cortes. `final.msgpack` sigue siendo el archivo para inferencia.
 No cambiamos el tamaño del mundo al cargar un checkpoint: una comparación de generalización
 de dos a cuatro civilizaciones requiere su propio protocolo.
 
@@ -200,6 +205,6 @@ La propuesta contempla 2, 4, 6 y 8 civilizaciones. Priorizamos 2 y 4; dejamos lo
 de 6 y 8 para escala y coaliciones H4, sin comprometer el cierre del 8 de noviembre y la
 presentación del 9 al 13. No entrenamos cuatro tamaños obligatoriamente en cada cambio.
 
-Siguen pendientes el autojuego ficticio, torneos contra arquetipos, reanudación por CLI,
-barajado de mensajes, señales costosas, barridos válidos, replicador, información mutua y
+Siguen pendientes el autojuego ficticio, torneos contra arquetipos,
+señales costosas, barridos válidos, replicador, información mutua y
 clasificación de regímenes. Conservamos la evaluación empírica de H1 separada de los tests.

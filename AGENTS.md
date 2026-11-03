@@ -14,6 +14,7 @@ uv run pytest             # cualquier comando va con `uv run`
 uv run ruff check .       # lint (y `uv run ruff format .` para formatear)
 uv run --group notebooks jupyter lab notebooks/fundamentos.ipynb
 uv run python -m train.ippo --config configs/aprendizaje_dos.yaml
+uv run python -m train.ippo --resume runs/<config>/<seed> train.total_steps=N  # continúa una corrida
 uv run --group notebooks jupyter lab notebooks/demo.ipynb
 uv run python -m train.valor_cooperacion --world periodo_aleatorio  # diagnóstico: aporte de cooperar
 uv run python -m train.matriz_pagos --lethality 0                   # diagnóstico: matriz de pagos

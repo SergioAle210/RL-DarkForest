@@ -181,8 +181,35 @@ def test_reward_is_only_log_growth():
 
 def test_unimplemented_extensions_are_explicit():
     """Evita ejecutar ablaciones con opciones sin efecto."""
-    with pytest.raises(NotImplementedError, match="pendientes"):
-        environment(costly_signals=True).reset(jax.random.PRNGKey(0))
+    for option in ({"costly_signals": True}, {"anomaly": AnomalyConfig(interfere=True)}):
+        with pytest.raises(NotImplementedError, match="pendientes"):
+            environment(**option).reset(jax.random.PRNGKey(0))
+
+
+def shared_message(shuffle, keys):
+    """Mensaje recibido por la civilización 1 tras medir y compartir, para un lote de claves."""
+    env = environment(shuffle_messages=shuffle)
+    _, state = jax.vmap(env.reset)(keys)
+    state = state.replace(pos=jnp.tile(jnp.array([[[0.0, 0.0], [0.05, 0.0]]]), (len(keys), 1, 1)))
+    step = jax.jit(jax.vmap(env.step))
+    measured = step(keys, state, jnp.tile(jnp.array([2, 1]), (len(keys), 1)))
+    shared = step(keys, measured.state, jnp.tile(jnp.array([7, 1]), (len(keys), 1)))
+    return measured, shared
+
+
+def test_shuffled_messages_arrive_alike_but_stop_informing():
+    """Barajar conserva llegada, símbolo y ángulo, y rompe el vínculo con la anomalía real."""
+    keys = jax.random.split(jax.random.PRNGKey(5), 256)
+    measured, real = shared_message(False, keys)
+    _, shuffled = shared_message(True, keys)
+    got_real, got_shuffled = real.obs.detections[:, 1, 0], shuffled.obs.detections[:, 1, 0]
+    np.testing.assert_array_equal(real.obs.det_mask, shuffled.obs.det_mask)
+    np.testing.assert_array_equal(got_real[:, :7], got_shuffled[:, :7])
+    truth = np.asarray(measured.state.last_meas[:, 0, 3])
+    np.testing.assert_allclose(got_real[:, 7], truth)
+    np.testing.assert_array_equal(shuffled.state.last_meas[:, 0], measured.state.last_meas[:, 0])
+    assert abs(np.corrcoef(truth, np.asarray(got_shuffled[:, 7]))[0, 1]) < 0.3
+    assert np.corrcoef(truth, np.asarray(got_real[:, 7]))[0, 1] > 0.99
 
 
 @pytest.mark.parametrize("channel", [True, False])

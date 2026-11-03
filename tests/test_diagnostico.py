@@ -58,3 +58,32 @@ def test_update_bursts_records_the_first_two_changes_only():
         last = burst
     np.testing.assert_array_equal(first, [5, 7])
     np.testing.assert_array_equal(second, [9, 0])
+
+
+def test_baselines_usan_el_radio_de_la_anomalia() -> None:
+    """Las políticas fijas se miden en la misma zona que el checkpoint: más radio, menos vida."""
+    from darkforest.config import load_config
+    from train.evaluar_checkpoint import baseline_returns
+
+    def survival(radius: float) -> float:
+        cfg = load_config(
+            "configs/costo_ignorar.yaml",
+            {"env.max_steps": 60, "env.anomaly.radius": radius, "env.anomaly.lethality": 1.0},
+        )
+        return baseline_returns(cfg, 1, 64)["ignorar"][1]
+
+    assert survival(0.6) < survival(0.1) - 0.2
+
+
+def test_ablacion_canal_no_afecta_a_quien_no_lo_usa_y_si_a_coop_real() -> None:
+    """Sin fuga: ignorar y solo no cambian al apagar el canal; coop_real depende de él."""
+    import numpy as np
+
+    from train.ablacion_canal import measure_cell
+
+    cell = measure_cell(1.0, 0.45, seeds=2, episodes=48, steps=80, margin=0.2)
+    for mode in ("ignorar", "solo"):
+        assert cell[f"{mode}_on"] == cell[f"{mode}_off"] == cell[f"{mode}_shuffle"]
+    on, off, mixed = (np.mean(cell[f"coop_real_{k}"]["return"]) for k in ("on", "off", "shuffle"))
+    assert on > off + 0.5
+    assert on > mixed + 0.5

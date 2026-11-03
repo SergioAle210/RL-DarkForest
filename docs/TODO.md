@@ -63,7 +63,7 @@
 | Resolver y verificar la dependencia de TensorBoard | Sergio | listo | 2026-10-27 |
 | Ejecutar y recargar episodios de la política aleatoria y los arquetipos | Sergio | listo | 2026-10-27 |
 | Cargar un checkpoint para generar episodios sin volver a entrenar | Sergio | listo | 2026-10-27 |
-| Reanudar un entrenamiento interrumpido desde la CLI | | | |
+| Reanudar un entrenamiento interrumpido desde la CLI | Bianca | listo | 2026-11-02 |
 | Evaluar políticas en train y exportar resultados para análisis | | | |
 | Integrar simulación, guardado, métricas y reproducción de episodios | Sergio | listo | 2026-10-27 |
 | Documentar cómo compartir código, corridas y modelos entre compañeros | Sergio | listo | 2026-10-27 |
@@ -93,9 +93,13 @@
 | Construir la matriz de pagos, el replicador y sus puntos fijos desde archivos | Ricardo | listo | 2026-10-28 |
 | Agregar resultados, diagramas de fases e incertidumbre y evaluar H5 | | | |
 | Ejecutar ablaciones de canal y mensajes y evaluar H3 | | | |
-| Preparar Colab y medir el presupuesto de cómputo | | | |
+| Ablación del canal con políticas fijas (λ de 0 a 1, radios 0.25 y 0.45, cinco seeds) | Bianca | listo | 2026-11-02 |
+| Implementar el barajado de mensajes y medirlo con políticas fijas | Bianca | listo | 2026-11-02 |
+| Preparar Colab y medir el presupuesto de cómputo (kernel de Kaggle en CPU; GPU pendiente de verificar la cuenta) | Bianca | en proceso | 2026-11-02 |
 | Evaluar parámetros secundarios con comparaciones controladas | | | |
 | Evaluar H1 empíricamente y diagnosticar resultados inesperados | | | |
+| Medir el costo de ignorar la anomalía (radio de la zona) y corregir las políticas fijas del evaluador | Bianca | listo | 2026-11-01 |
+| Entrenar con el radio 0.45 en cinco seeds y comparar contra ignorar | Bianca | listo | 2026-11-02 |
 | Ejecutar el barrido exploratorio de tres por tres con tres seeds | | | |
 | Consolidar H1 y H2 con al menos cinco seeds por configuración reportada | | | |
 
