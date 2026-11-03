@@ -297,8 +297,30 @@ error estándar. "Aporte" es coop_real con canal menos la mejor de ignorar y sol
 - **Lectura para el entrenamiento.** El valor del canal que una red podría descubrir es +0.7
   con el radio base y +3.9 con 0.45 en λ = 1. Las cinco redes entrenadas con radio 0.45
   (+1.89) quedaron por debajo de ignorar, así que el techo existe pero no lo encuentran.
-- **Límites.** Solo el modo `channel_enabled`. El barajado de mensajes (`shuffle_messages`) y
-  las señales costosas siguen sin implementar en el entorno, así que H3 queda pendiente.
+- **Mensajes barajados** (`env.shuffle_messages`, implementado en esta rama). El mensaje conserva
+  emisor, símbolo, llegada y ángulo de observación, pero su medición se cambia por la de un θ
+  independiente, como si viniera de otro episodio. Isola si importa que el mensaje sea verdadero
+  o solo que llegue. Retorno de coop_real:
+
+| λ | radio | con canal | sin canal | barajado | quita barajar |
+|---|---|---|---|---|---|
+| 0 | 0.25 | +8.383 | +8.337 | +8.430 | -0.047 ± 0.009 |
+| 0 | 0.45 | +8.215 | +8.258 | +8.267 | -0.052 ± 0.003 |
+| 0.25 | 0.25 | +8.061 | +7.315 | +7.310 | +0.751 ± 0.093 |
+| 0.25 | 0.45 | +7.678 | +5.240 | +5.860 | +1.818 ± 0.127 |
+| 0.5 | 0.25 | +7.917 | +6.840 | +6.880 | +1.037 ± 0.097 |
+| 0.5 | 0.45 | +7.254 | +3.643 | +4.110 | +3.144 ± 0.155 |
+| 1 | 0.25 | +7.778 | +6.508 | +6.588 | +1.190 ± 0.104 |
+| 1 | 0.45 | +6.681 | +2.503 | +2.607 | +4.074 ± 0.149 |
+
+  Barajar quita casi todo lo que quita apagar el canal: lo que vale es que el mensaje sea
+  verdadero, no que llegue. En dos celdas (λ de 0.25 y 0.5 con radio 0.45) el barajado recupera
+  entre 0.5 y 0.6 sobre apagar; es probable que refugiarse en un lugar al azar proteja algo
+  cuando la zona cubre más de la mitad del toro, pero no lo verifiqué. Con λ = 0 los tres
+  casos quedan a menos de 0.06 entre sí. Ignorar y solo siguen idénticos en las tres variantes.
+- **Límites.** Son políticas fijas; la misma ablación con redes entrenadas queda pendiente y
+  hoy ninguna red usa el canal. Las señales costosas siguen sin implementar, así que H3
+  queda pendiente.
 
 ## Principio de diseño
 

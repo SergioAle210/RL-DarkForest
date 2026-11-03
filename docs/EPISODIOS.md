@@ -206,5 +206,5 @@ de 6 y 8 para escala y coaliciones H4, sin comprometer el cierre del 8 de noviem
 presentación del 9 al 13. No entrenamos cuatro tamaños obligatoriamente en cada cambio.
 
 Siguen pendientes el autojuego ficticio, torneos contra arquetipos,
-barajado de mensajes, señales costosas, barridos válidos, replicador, información mutua y
+señales costosas, barridos válidos, replicador, información mutua y
 clasificación de regímenes. Conservamos la evaluación empírica de H1 separada de los tests.

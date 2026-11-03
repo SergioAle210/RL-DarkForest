@@ -162,7 +162,8 @@ para revisión científica del equipo; no se presentan como resultados de las hi
 | Rumbo y distancia | Desplazamiento mínimo exacto del toro después de detectar; el ruido se aplica a mediciones de anomalía |
 | Refugio | Protege el paso siguiente por defecto; `refuge_duration=1`; se consume al estallar o al vencer |
 | Anomalía | θ = fase, periodo, centro x/y y radio; periodo configurado, fase/centro aleatorios, radio 0.25 |
-| Extensiones | Señales costosas, interferencia y barajado todavía producen un error explícito al iniciar |
+| Extensiones | Señales costosas e interferencia todavía producen un error explícito al iniciar |
+| Barajado | `shuffle_messages` cambia la medición de cada mensaje por la de un θ independiente (como un mensaje de otro episodio); conserva emisor, símbolo, llegada y ángulo |
 
 La proyección es `z = (cos(φ)*fase + sin(φ)*periodo, cos(φ)*cx + sin(φ)*cy)`.
 Una dirección deja el centro indeterminado; dos direcciones linealmente independientes lo
