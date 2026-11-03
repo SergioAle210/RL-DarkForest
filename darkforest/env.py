@@ -103,10 +103,8 @@ class DarkForestEnv:
 
     def _check_features(self) -> None:
         """Rechaza extensiones cuyo mecanismo aún no está implementado."""
-        if self.cfg.costly_signals or self.cfg.anomaly.interfere or self.cfg.shuffle_messages:
-            raise NotImplementedError(
-                "Señales costosas, interferencia y barajado siguen pendientes"
-            )
+        if self.cfg.costly_signals or self.cfg.anomaly.interfere:
+            raise NotImplementedError("Señales costosas e interferencia siguen pendientes")
 
     def _contacts(self, state: EnvState) -> tuple[jax.Array, jax.Array]:
         """Ordena contactos recientes sin revelar el número total de emisores."""
@@ -175,10 +173,13 @@ class DarkForestEnv:
         refuge = (until >= now) & state.alive
         symbol = jnp.where(kind == 3, argument, jnp.where(kind == 4, cfg.n_symbols, -1))
         symbol = jnp.where(cfg.channel_enabled, symbol, -1)
+        sent = last_meas
+        if cfg.shuffle_messages:
+            sent = self._shuffled(jax.random.fold_in(key, 7), last_meas)
         content = jnp.concatenate(
             [
                 symbol[:, None],
-                jnp.where(((kind == 4) & cfg.channel_enabled)[:, None], last_meas, 0),
+                jnp.where(((kind == 4) & cfg.channel_enabled)[:, None], sent, 0),
             ],
             axis=1,
         )
@@ -254,6 +255,25 @@ class DarkForestEnv:
             ~alive | (now >= cfg.max_steps),
             info,
         )
+
+    def _shuffled(self, key: jax.Array, last_meas: jax.Array) -> jax.Array:
+        """Cambia la medición por la de un θ independiente, como un mensaje de otro episodio.
+
+        Conserva el indicador y el ángulo de observación, así que el mensaje llega igual y
+        parece válido; solo deja de informar sobre la anomalía de este episodio.
+        """
+        n = self.n_agents
+        thetas = jax.vmap(lambda k: anomaly.sample_theta(k, self.cfg.anomaly))(
+            jax.random.split(key, n)
+        )
+        angle = jnp.arctan2(last_meas[:, 2], last_meas[:, 1])
+        fake = jax.vmap(anomaly.measure, in_axes=(0, 0, 0, None))(
+            jax.random.split(jax.random.fold_in(key, 1), n),
+            thetas,
+            angle,
+            self.cfg.anomaly.noise_std,
+        )
+        return last_meas.at[:, 3:5].set(jnp.where(last_meas[:, :1] > 0, fake, 0))
 
     def _receive(self, key: jax.Array, state: EnvState, now: jax.Array):
         """Entrega cada frente de señal una vez y conserva el último mensaje."""

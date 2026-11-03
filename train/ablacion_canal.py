@@ -1,10 +1,11 @@
 """Ablación del canal con políticas fijas, sin entrenar.
 
-Compara ignorar, solo y coop_real con el canal encendido y apagado (env.channel_enabled) por
-letalidad y radio de la zona. Sirve para dos lecturas, ambas en docs/DIAGNOSTICO_DISENO.md:
-H1, con λ = 0 apagar el canal no debe cambiar a quien no lo usa (ignorar y solo salen idénticos
-o hay una fuga de información); y con λ > 0, cuánto del retorno de coop_real depende del canal.
-Cada celda (λ, radio) se guarda en un JSON y las ya medidas se saltan.
+Compara ignorar, solo y coop_real con el canal encendido, apagado (env.channel_enabled) y con
+los mensajes barajados (env.shuffle_messages), por letalidad y radio de la zona. Sirve para
+tres lecturas, todas en docs/DIAGNOSTICO_DISENO.md: H1, con λ = 0 apagar el canal no debe
+cambiar a quien no lo usa (si cambia hay una fuga de información); con λ > 0, cuánto del
+retorno de coop_real depende del canal; y si importa que el mensaje sea verdadero o solo que
+llegue. Cada celda (λ, radio) se guarda en un JSON; las ya medidas solo agregan lo que falta.
 
 Uso: python -m train.ablacion_canal --out-dir runs/ablacion_canal
 """
@@ -27,18 +28,32 @@ def cell_path(out_dir: Path, lethality: float, radius: float) -> Path:
     return out_dir / f"ablacion_lam{lethality:g}_r{radius:g}.json"
 
 
+VARIANTS = {
+    "on": {},
+    "off": {"env.channel_enabled": False},
+    "shuffle": {"env.shuffle_messages": True},
+}
+
+
 def measure_cell(
-    lethality: float, radius: float, seeds: int, episodes: int, steps: int, margin: float
+    lethality: float,
+    radius: float,
+    seeds: int,
+    episodes: int,
+    steps: int,
+    margin: float,
+    cell: dict | None = None,
 ) -> dict:
-    """Retorno y supervivencia por seed de cada política con el canal encendido y apagado."""
-    cell: dict = {"lethality": lethality, "radius": radius, "margin": margin, "seeds": seeds}
-    for channel in (True, False):
-        over = {
-            "env.channel_enabled": channel,
-            "env.anomaly.radius": radius,
-            "env.signal_speed": 1.0,
-        }
+    """Retorno y supervivencia por seed de cada política en cada variante del canal.
+
+    Con una celda ya medida solo calcula las combinaciones que le faltan.
+    """
+    cell = cell or {"lethality": lethality, "radius": radius, "margin": margin, "seeds": seeds}
+    for variant, extra in VARIANTS.items():
+        over = {"env.anomaly.radius": radius, "env.signal_speed": 1.0, **extra}
         for mode in MODES:
+            if f"{mode}_{variant}" in cell:
+                continue
             runs = [
                 run(
                     lethality,
@@ -52,7 +67,7 @@ def measure_cell(
                 )
                 for s in range(seeds)
             ]
-            cell[f"{mode}_{'on' if channel else 'off'}"] = {
+            cell[f"{mode}_{variant}"] = {
                 "return": [r[0] for r in runs],
                 "survival": [r[1] for r in runs],
             }
@@ -63,11 +78,12 @@ def summarize(cell: dict) -> str:
     """Una línea por política y las diferencias pareadas por seed que sostienen cada lectura."""
     lines = [f"lambda={cell['lethality']:g} radio={cell['radius']:g}"]
     for mode in MODES:
-        on, off = (np.array(cell[f"{mode}_{k}"]["return"]) for k in ("on", "off"))
-        diff = mean_se(on - off)
+        on, off, mixed = (np.array(cell[f"{mode}_{k}"]["return"]) for k in VARIANTS)
+        diff, diff_mixed = mean_se(on - off), mean_se(on - mixed)
         lines.append(
             f"  {mode:10s} canal {np.mean(on):+.3f}  sin canal {np.mean(off):+.3f}  "
-            f"diferencia {diff[0]:+.3f} ± {diff[1]:.3f}"
+            f"barajado {np.mean(mixed):+.3f}  apagar {diff[0]:+.3f} ± {diff[1]:.3f}  "
+            f"barajar {diff_mixed[0]:+.3f} ± {diff_mixed[1]:.3f}"
         )
     on = np.array(cell["coop_real_on"]["return"])
     best = np.maximum(np.array(cell["ignorar_on"]["return"]), np.array(cell["solo_on"]["return"]))
@@ -92,12 +108,12 @@ def main() -> None:
     for lethality in args.lethality:
         for radius in args.radius:
             path = cell_path(out_dir, lethality, radius)
-            if not path.exists():
-                cell = measure_cell(
-                    lethality, radius, args.seeds, args.episodes, args.steps, args.margin
-                )
-                path.write_text(json.dumps(cell, indent=2), encoding="utf-8")
-            print(summarize(json.loads(path.read_text(encoding="utf-8"))), flush=True)
+            cell = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+            cell = measure_cell(
+                lethality, radius, args.seeds, args.episodes, args.steps, args.margin, cell
+            )
+            path.write_text(json.dumps(cell, indent=2), encoding="utf-8")
+            print(summarize(cell), flush=True)
 
 
 if __name__ == "__main__":
