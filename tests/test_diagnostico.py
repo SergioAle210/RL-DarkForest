@@ -83,6 +83,7 @@ def test_ablacion_canal_no_afecta_a_quien_no_lo_usa_y_si_a_coop_real() -> None:
 
     cell = measure_cell(1.0, 0.45, seeds=2, episodes=48, steps=80, margin=0.2)
     for mode in ("ignorar", "solo"):
-        assert cell[f"{mode}_on"] == cell[f"{mode}_off"]
-    on, off = (np.mean(cell[f"coop_real_{k}"]["return"]) for k in ("on", "off"))
+        assert cell[f"{mode}_on"] == cell[f"{mode}_off"] == cell[f"{mode}_shuffle"]
+    on, off, mixed = (np.mean(cell[f"coop_real_{k}"]["return"]) for k in ("on", "off", "shuffle"))
     assert on > off + 0.5
+    assert on > mixed + 0.5
