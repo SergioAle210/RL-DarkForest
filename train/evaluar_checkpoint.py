@@ -74,6 +74,9 @@ def baseline_returns(cfg: Config, seeds: int, episodes: int) -> dict[str, tuple[
         "env.signal_speed": cfg.env.signal_speed,
         "env.cost_tx": cfg.env.cost_tx,
         "env.p_kill": cfg.env.p_kill,
+        "env.anomaly.radius": cfg.env.anomaly.radius,
+        "env.anomaly.period": cfg.env.anomaly.period,
+        "env.anomaly.noise_std": cfg.env.anomaly.noise_std,
         "env.projectiles_cancel_on_death": cfg.env.projectiles_cancel_on_death,
     }
     if cfg.env.detection_growth is not None:

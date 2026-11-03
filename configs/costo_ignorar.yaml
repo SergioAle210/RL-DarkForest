@@ -1,0 +1,15 @@
+# Ignorar es caro: la zona de la anomalía cubre un tercio del toro (radio 0.45), así que quien
+# solo crece muere en la mitad de los episodios. La recompensa no cambia. Sin autojuego (rho 0).
+extends: base.yaml
+env:
+  n_civs: 2
+  detection_growth: 0.05
+  anomaly:
+    lethality: 0.5
+    radius: 0.45
+train:
+  n_envs: 1024
+  rollout_len: 64
+  total_steps: 2097152
+  self_play:
+    rho: 0.0

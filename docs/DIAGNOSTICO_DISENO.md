@@ -224,6 +224,46 @@ Que coop_ideal supere a solo por +0.03 o +0.07 no contradice H1: solo se refugia
 con λ = 0 y la política con información exacta lo hace menos veces. La comparación válida es
 contra ignorar. Falta la comprobación con agentes entrenados (ablación del canal con λ = 0).
 
+## Costo de ignorar (A09)
+
+Con el radio 0.25 de la zona, una civilización que nunca se refugia sobrevive el 79% de los
+episodios: la letalidad casi no importa porque la posición es fija y, con unos nueve estallidos
+por episodio, cualquier civilización dentro de la zona muere con λ ≥ 0.5. Lo que decide cuánto
+cuesta ignorar es el área de la zona, no λ. Sin tocar la recompensa:
+
+| radio | crecer (ignorar) | solo | coop_real | oráculo | aporte de coop_real sobre ignorar |
+|---|---|---|---|---|---|
+| 0.25 | +7.03 | +6.82 | +7.81 | +8.95 | +0.78 |
+| 0.40 | +4.02 | +3.86 | +6.97 | +8.79 | +2.95 |
+| 0.55 | +0.45 | +0.40 | +6.18 | +8.59 | +5.73 |
+
+Dos civilizaciones, λ = 1, c = 1, 3 seeds, 200 episodios. Con el radio base cooperar mejora el
+retorno cerca de 11%, que coincide con lo observado en las corridas de la red. Las rejillas 3×3
+completas con radios 0.25, 0.35 y 0.45 están en `runs/pagos_r*`. `solo` rinde igual que ignorar
+en todos los radios: medir sin compartir no alcanza para anticipar el estallido.
+
+Corrida corta con `configs/costo_ignorar.yaml` (radio 0.45, 2.1 M pasos, CPU): retorno +2.22 y
+supervivencia 0.33, crece el 95% del tiempo. Las políticas fijas obtienen ignorar +2.67 (0.34),
+solo +3.53, coop_real +6.88 y oráculo +8.71. Con 2 M pasos la red no supera a ignorar. Esta comparación exigió corregir `baseline_returns`, que no pasaba el radio y
+medía las políticas fijas en el mundo de radio 0.25.
+
+Cinco seeds de 10.5 M pasos con la misma config (Kaggle, CPU, `kaggle/run.py`; corridas en
+`runs/costo_ignorar-f8b2146ed7/`), evaluadas con 400 episodios:
+
+| seed | retorno | supervivencia | crecer | refugiarse | atacar |
+|---|---|---|---|---|---|
+| 0 | +1.88 | 0.36 | 0.72 | 0.23 | 0.001 |
+| 1 | +1.46 | 0.26 | 0.82 | 0.13 | 0.005 |
+| 2 | +1.90 | 0.34 | 0.78 | 0.15 | 0.002 |
+| 3 | +2.30 | 0.35 | 0.91 | 0.06 | 0.001 |
+| 4 | +1.93 | 0.34 | 0.78 | 0.17 | 0.001 |
+| media ± error estándar | +1.89 ± 0.13 | 0.33 | | | |
+
+Ninguna seed alcanza a ignorar (+2.77, supervivencia 0.36), solo (+3.71) ni coop_real (+6.94).
+Las cinco aprenden a refugiarse (6% a 23% del tiempo) sin saber cuándo, y transmitir o compartir
+quedan por debajo del 2%. Con radio 0.45 y 10.5 M pasos H1 y H2 no tienen evidencia a favor ni en
+contra: la red no usa el canal. Falta saber si más pasos o una GPU cambian el patrón.
+
 ## Principio de diseño
 
 1. Las reglas del juego son decisión nuestra. Los comportamientos que aparezcan (cooperar,
