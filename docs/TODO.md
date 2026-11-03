@@ -93,6 +93,7 @@
 | Construir la matriz de pagos, el replicador y sus puntos fijos desde archivos | Ricardo | listo | 2026-10-28 |
 | Agregar resultados, diagramas de fases e incertidumbre y evaluar H5 | | | |
 | Ejecutar ablaciones de canal y mensajes y evaluar H3 | | | |
+| Ablación del canal con políticas fijas (λ de 0 a 1, radios 0.25 y 0.45, cinco seeds) | Bianca | listo | 2026-11-02 |
 | Preparar Colab y medir el presupuesto de cómputo (kernel de Kaggle en CPU; GPU pendiente de verificar la cuenta) | Bianca | en proceso | 2026-11-02 |
 | Evaluar parámetros secundarios con comparaciones controladas | | | |
 | Evaluar H1 empíricamente y diagnosticar resultados inesperados | | | |

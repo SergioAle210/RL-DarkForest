@@ -20,6 +20,7 @@ uv run python -m train.matriz_pagos --lethality 0
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 0.75
 uv run python -m train.matriz_pagos --lethality 0 --cancel --p-kill 1.0
 uv run python -m train.pagos_rejilla --out-dir runs/pagos --set env.detection_growth=0.05
+uv run python -m train.ablacion_canal --out-dir runs/ablacion_canal
 ```
 
 Las pruebas con valores calculables están en `tests/test_diagnostico.py`.
@@ -263,6 +264,41 @@ Ninguna seed alcanza a ignorar (+2.77, supervivencia 0.36), solo (+3.71) ni coop
 Las cinco aprenden a refugiarse (6% a 23% del tiempo) sin saber cuándo, y transmitir o compartir
 quedan por debajo del 2%. Con radio 0.45 y 10.5 M pasos H1 y H2 no tienen evidencia a favor ni en
 contra: la red no usa el canal. Falta saber si más pasos o una GPU cambian el patrón.
+
+## Ablación del canal con políticas fijas
+
+`train.ablacion_canal` mide ignorar, solo y coop_real con `env.channel_enabled` encendido y
+apagado. Dos civilizaciones, periodo aleatorio, c = 1, margen 0.2 para coop_real, 5 seeds y
+200 episodios. La diferencia se calcula por seed (mismas semillas con y sin canal) y el ± es el
+error estándar. "Aporte" es coop_real con canal menos la mejor de ignorar y solo.
+
+| λ | radio | coop_real con canal | sin canal | diferencia por apagar | aporte del canal |
+|---|---|---|---|---|---|
+| 0 | 0.25 | +8.383 | +8.337 | +0.046 ± 0.007 | -0.682 ± 0.005 |
+| 0 | 0.45 | +8.215 | +8.258 | -0.043 ± 0.004 | -0.850 ± 0.004 |
+| 0.25 | 0.25 | +8.061 | +7.315 | +0.746 ± 0.106 | +0.378 ± 0.113 |
+| 0.25 | 0.45 | +7.678 | +5.240 | +2.438 ± 0.115 | +2.495 ± 0.150 |
+| 0.5 | 0.25 | +7.917 | +6.840 | +1.076 ± 0.112 | +0.677 ± 0.128 |
+| 0.5 | 0.45 | +7.254 | +3.643 | +3.611 ± 0.143 | +3.543 ± 0.153 |
+| 1 | 0.25 | +7.778 | +6.508 | +1.270 ± 0.098 | +0.709 ± 0.106 |
+| 1 | 0.45 | +6.681 | +2.503 | +4.178 ± 0.139 | +3.900 ± 0.151 |
+
+- **No hay fuga de información.** Ignorar y solo dan retornos idénticos con y sin canal en las
+  ocho celdas, seed por seed. Lo que difiere es solo lo que usa el canal.
+- **H1 con políticas fijas.** Con λ = 0 apagar el canal cambia coop_real en menos de 0.05, con
+  signo distinto según el radio, es decir cerca de 0.5% del retorno y no sistemático. No es
+  exactamente cero: coop_real se refugia distinto cuando recibe una medición, aunque con λ = 0
+  refugiarse no sirve de nada. Lo que sí se cumple es que el canal no vale nada: ignorar rinde
+  entre 0.68 y 0.85 más que coop_real. Con agentes entrenados falta la misma ablación.
+- **Con λ > 0 el canal sí importa y su aporte crece con λ y con el radio.** En radio 0.25 sube
+  de +0.38 a +0.71, y en radio 0.45 de +2.50 a +3.90. Sin canal coop_real queda cerca de solo
+  o por debajo (paga el costo de compartir y no recibe nada). Es la forma que predice H2 para
+  estas estrategias, sin ser evidencia de aprendizaje.
+- **Lectura para el entrenamiento.** El valor del canal que una red podría descubrir es +0.7
+  con el radio base y +3.9 con 0.45 en λ = 1. Las cinco redes entrenadas con radio 0.45
+  (+1.89) quedaron por debajo de ignorar, así que el techo existe pero no lo encuentran.
+- **Límites.** Solo el modo `channel_enabled`. El barajado de mensajes (`shuffle_messages`) y
+  las señales costosas siguen sin implementar en el entorno, así que H3 queda pendiente.
 
 ## Principio de diseño
 
