@@ -344,12 +344,41 @@ Cambios implementados, todos apagados o neutros por defecto:
 | `env.projectiles_cancel_on_death` | El proyectil de una civilización eliminada no impacta | False: un proyectil ya lanzado sigue su camino aunque muera quien lo lanzó. Una civilización muerta nunca lanza ataques nuevos en ningún caso |
 | `env.detection_growth` | Probabilidad de detección de quien crece; transmitir y compartir siguen emitiendo en alta en su paso | Sin valor (igual a `detection_high`), el comportamiento anterior. Con un valor bajo crecer es silencioso y cooperar expone |
 
-Pendientes de decisión: qué valores de `detection_growth` y `detection_low` entran al barrido
-(por defecto no cambia nada, pero la sección 3.3 de la propuesta dice que crecer pone la
-emisión en alta, y bajarla es un cambio de esa regla que debe declararse), el botín al atacar y
-la detección garantizada al transmitir o compartir. Con 200 pasos casi todo emisor es descubierto
+Pendientes de decisión: el botín al atacar y la detección garantizada al transmitir o
+compartir. Bajar `detection_growth` cambia la regla de la sección 3.3 de la propuesta (crecer
+pone la emisión en alta) y debe declararse. Con 200 pasos casi todo emisor es descubierto
 si emite a 0.05 por la distancia (cerca de 99.9%), por eso la exposición de cooperar solo pesa
 con una detección base muy baja.
+
+## Sensibilidad a la detección de quien crece (A-08)
+
+Se midieron matrices de pagos con radio 0.45, λ en {0.5, 1}, c en {0.22, 1}, 3 seeds por celda,
+para `detection_growth` en {0.1, 0.05, 0.01, 0.001} (en 0.01 y 0.001 se bajó también
+`detection_low` al mismo valor, porque el crecimiento no puede quedar fuera de [low, high]). La
+referencia es `runs/pagos_r0.45` con la detección por defecto (crecer en alta, 0.9; 5 seeds).
+
+| `detection_growth` | Dominante | Vértices estables | Cooperadores vs solos | Atacantes vs cooperadores |
+|---|---|---|---|---|
+| 0.9 (defecto) | coop_real | solo, coop_real (ataque_solo solo en c=0.22 con λ=1 y λ=0.25) | 0.04-0.13 | 0.97-0.99 |
+| 0.1 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.78-0.82 |
+| 0.05 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.70-0.79 |
+| 0.01 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.60-0.70 |
+| 0.001 | coop_real | solo, coop_real | 0.04-0.06 | 0.54-0.67 |
+
+Lectura:
+
+- La masa crítica de cooperadores frente a solos no depende de la detección (0.04-0.06): cooperar
+  vale por evitar la anomalía, no por cómo se ve quien crece.
+- La detección sí mueve al atacante: cuanto menos se ve quien crece, menos hay que atacar y la
+  masa crítica de atacantes frente a cooperadores baja de 0.98 a 0.55. El vértice ataque_solo
+  aparece como estable en valores intermedios y desaparece en 0.001.
+- El régimen dominante no cambia en ningún valor, así que la conclusión principal (cooperar
+  domina cuando la anomalía es costosa) no depende de este parámetro.
+
+Propuesta para el barrido secundario (el equipo decide): `detection_growth` en {defecto, 0.05,
+0.001}. Los extremos cubren con y sin ataque_solo estable; 0.1 y 0.01 quedan entre ellos y no
+añaden regímenes nuevos. Lo medido son políticas fijas con 3 seeds; no se añade a
+`configs/sweep.yaml` hasta que el equipo lo apruebe.
 
 ## Límites
 
