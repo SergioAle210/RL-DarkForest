@@ -32,6 +32,7 @@ COUNTS = (
 )
 PROBABILITIES = (
     "env.p_kill",
+    "env.loot",
     "env.anomaly.lethality",
     "train.gamma",
     "train.gae_lambda",
@@ -450,3 +451,18 @@ def test_detection_growth_defaults_to_the_high_level():
     """Sin valor explícito, crecer emite como detection_high; con valor, usa el indicado."""
     assert EnvConfig().growth_detection == 0.9
     assert EnvConfig(detection_growth=0.05).growth_detection == 0.05
+
+
+@pytest.mark.parametrize(
+    ("value", "error"), [(0.01, ValueError), (1.1, ValueError), (True, TypeError), ("1", TypeError)]
+)
+def test_detection_transmit_is_validated(value, error):
+    """La detección al transmitir es un número entre detection_low y 1."""
+    with pytest.raises(error):
+        EnvConfig(detection_low=0.05, detection_transmit=value)
+
+
+def test_detection_transmit_defaults_to_the_high_level():
+    """Sin valor explícito, transmitir emite como detection_high; con valor, usa el indicado."""
+    assert EnvConfig().transmit_detection == 0.9
+    assert EnvConfig(detection_transmit=1.0).transmit_detection == 1.0

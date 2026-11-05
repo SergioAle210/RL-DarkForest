@@ -95,6 +95,8 @@ class EnvConfig:
     detection_low: float = 0.05
     detection_high: float = 0.9
     detection_growth: float | None = None  # None = detection_high: crecer emite en alta
+    detection_transmit: float | None = None  # None = detection_high al transmitir o compartir
+    loot: float = 0.0  # fracción de los recursos de la víctima que gana quien la elimina
     detection_decay: float = 1.0
     detection_ttl: int = 20
     refuge_duration: int = 1
@@ -133,6 +135,11 @@ class EnvConfig:
             _number("env.detection_growth", self.detection_growth, maximum=1)
             if not self.detection_low <= self.detection_growth <= self.detection_high:
                 raise ValueError("env.detection_growth: debe estar entre detection_low y high")
+        if self.detection_transmit is not None:
+            _number("env.detection_transmit", self.detection_transmit, maximum=1)
+            if self.detection_transmit < self.detection_low:
+                raise ValueError("env.detection_transmit: no debe ser menor que detection_low")
+        _number("env.loot", self.loot, maximum=1)
         _integer("env.detection_ttl", self.detection_ttl)
         _integer("env.refuge_duration", self.refuge_duration)
 
@@ -140,6 +147,11 @@ class EnvConfig:
     def growth_detection(self) -> float:
         """Detección de una civilización activa; sin valor explícito iguala a detection_high."""
         return self.detection_high if self.detection_growth is None else self.detection_growth
+
+    @property
+    def transmit_detection(self) -> float:
+        """Detección al transmitir o compartir; sin valor explícito iguala a detection_high."""
+        return self.detection_high if self.detection_transmit is None else self.detection_transmit
 
     @property
     def n_discrete(self) -> int:
