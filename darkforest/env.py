@@ -226,7 +226,13 @@ class DarkForestEnv:
         victims &= state.alive & ~attacked
         alive = state.alive & ~attacked & ~victims
         protected = burst & refuge & (distance(state.pos, state.theta[2:4]) <= state.theta[4])
-        resources = jnp.where(alive, resources, 0)
+        # botín: quien elimina a otra civilización se queda con una fracción de sus recursos
+        gain = (
+            jnp.zeros(n)
+            .at[jnp.where(attacked, attacker, 0)]
+            .add(jnp.where(attacked, cfg.loot * resources, 0))
+        )
+        resources = jnp.where(alive, resources + gain, 0)
         info = StepInfo(
             jnp.where(attacked, 2, jnp.where(victims, 1, 0)),
             attacker,
@@ -286,7 +292,7 @@ class DarkForestEnv:
         level = state.sig_emission
         probability = jnp.where(
             level == 2,
-            cfg.detection_high,
+            cfg.transmit_detection,
             jnp.where(level == 1, cfg.growth_detection, cfg.detection_low),
         )
         probability = probability[None, :] * jnp.exp(-cfg.detection_decay * distances)

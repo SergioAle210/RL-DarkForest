@@ -225,6 +225,14 @@ Que coop_ideal supere a solo por +0.03 o +0.07 no contradice H1: solo se refugia
 con λ = 0 y la política con información exacta lo hace menos veces. La comparación válida es
 contra ignorar. Falta la comprobación con agentes entrenados (ablación del canal con λ = 0).
 
+Pendiente, para quien tenga una máquina libre (5 seeds por variante, unos 15 min por corrida y
+5 en paralelo saturan una laptop; sirve también el kernel de Kaggle): entrenar
+`configs/h1_sanity.yaml` con `train.seed` de 0 a 4, `train.self_play.rho=0` y
+`train.total_steps=5242880` (debe ser múltiplo de `n_envs * rollout_len`), una vez con el canal
+y otra con `env.channel_enabled=false`. Evaluar cada `final.msgpack` con
+`train.evaluar_checkpoint --baselines` y comparar retorno y supervivencia entre variantes y
+contra ignorar. Si el canal importa con λ = 0 hay una fuga de información o un error del entorno.
+
 ## Costo de ignorar (A09)
 
 Con el radio 0.25 de la zona, una civilización que nunca se refugia sobrevive el 79% de los
@@ -343,13 +351,68 @@ Cambios implementados, todos apagados o neutros por defecto:
 | `anomaly.period_spread` | El periodo se sortea por episodio en [period - k, period + k] | 0 en el código (comportamiento anterior) y 8 en `configs/base.yaml`. Es un arreglo de fidelidad: la propuesta define θ con el periodo como parámetro oculto (sección 3.2) y prevé el riesgo "el canal se ignora", que ocurre si θ es identificable con una sola proyección. Con periodo fijo lo era. El valor 8 es libre |
 | `env.projectiles_cancel_on_death` | El proyectil de una civilización eliminada no impacta | False: un proyectil ya lanzado sigue su camino aunque muera quien lo lanzó. Una civilización muerta nunca lanza ataques nuevos en ningún caso |
 | `env.detection_growth` | Probabilidad de detección de quien crece; transmitir y compartir siguen emitiendo en alta en su paso | Sin valor (igual a `detection_high`), el comportamiento anterior. Con un valor bajo crecer es silencioso y cooperar expone |
+| `env.detection_transmit` | Probabilidad de detección en el paso en que se transmite o comparte | Sin valor (igual a `detection_high`), el comportamiento anterior. Con un valor bajo compartir deja de exponer |
+| `env.loot` | Fracción de los recursos de la víctima que gana quien la elimina con un ataque | 0: sin botín, el comportamiento anterior. La recompensa no cambia, solo crecen los recursos del atacante |
 
-Pendientes de decisión: qué valores de `detection_growth` y `detection_low` entran al barrido
-(por defecto no cambia nada, pero la sección 3.3 de la propuesta dice que crecer pone la
-emisión en alta, y bajarla es un cambio de esa regla que debe declararse), el botín al atacar y
-la detección garantizada al transmitir o compartir. Con 200 pasos casi todo emisor es descubierto
+Bajar `detection_growth` o `detection_transmit` cambia la regla de la sección 3.3 de la
+propuesta (crecer, transmitir y compartir emiten en alta) y debe declararse. Los valores de
+barrido propuestos están en la sección de sensibilidad (A-08). Con 200 pasos casi todo emisor es descubierto
 si emite a 0.05 por la distancia (cerca de 99.9%), por eso la exposición de cooperar solo pesa
 con una detección base muy baja.
+
+## Sensibilidad a la detección de quien crece (A-08)
+
+Se midieron matrices de pagos con radio 0.45, λ en {0.5, 1}, c en {0.22, 1}, 3 seeds por celda,
+para `detection_growth` en {0.1, 0.05, 0.01, 0.001} (en 0.01 y 0.001 se bajó también
+`detection_low` al mismo valor, porque el crecimiento no puede quedar fuera de [low, high]). La
+referencia es `runs/pagos_r0.45` con la detección por defecto (crecer en alta, 0.9; 5 seeds).
+
+| `detection_growth` | Dominante | Vértices estables | Cooperadores vs solos | Atacantes vs cooperadores |
+|---|---|---|---|---|
+| 0.9 (defecto) | coop_real | solo, coop_real (ataque_solo solo en c=0.22 con λ=1 y λ=0.25) | 0.04-0.13 | 0.97-0.99 |
+| 0.1 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.78-0.82 |
+| 0.05 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.70-0.79 |
+| 0.01 | coop_real | solo, coop_real, ataque_solo | 0.04-0.06 | 0.60-0.70 |
+| 0.001 | coop_real | solo, coop_real | 0.04-0.06 | 0.54-0.67 |
+
+Lectura:
+
+- La masa crítica de cooperadores frente a solos no depende de la detección (0.04-0.06): cooperar
+  vale por evitar la anomalía, no por cómo se ve quien crece.
+- La detección sí mueve al atacante: cuanto menos se ve quien crece, menos hay que atacar y la
+  masa crítica de atacantes frente a cooperadores baja de 0.98 a 0.55. El vértice ataque_solo
+  aparece como estable en valores intermedios y desaparece en 0.001.
+- El régimen dominante no cambia en ningún valor, así que la conclusión principal (cooperar
+  domina cuando la anomalía es costosa) no depende de este parámetro.
+
+Propuesta para el barrido secundario (el equipo decide): `detection_growth` en {defecto, 0.05,
+0.001}. Los extremos cubren con y sin ataque_solo estable; 0.1 y 0.01 quedan entre ellos y no
+añaden regímenes nuevos. Lo medido son políticas fijas con 3 seeds; no se añade a
+`configs/sweep.yaml` hasta que el equipo lo apruebe.
+
+### Botín y detección al transmitir
+
+Mismas celdas y 3 seeds, con `env.loot` en {0.5, 1.0} y `env.detection_transmit` en {0.3, 0.05}
+(`detection_low` 0.05, así que 0.05 hace que compartir sea tan visible como callar).
+
+| Ajuste | Dominante | Vértices estables | Cooperadores vs solos | Atacantes vs cooperadores |
+|---|---|---|---|---|
+| defecto | coop_real | solo, coop_real (más ataque_solo en λ=1, c=0.22) | 0.04-0.07 | 0.98-0.99 |
+| `loot` 0.5 | coop_real | coop_real, ataque_solo (en λ=0.5, c=1 solo coop_real) | 0.04-0.06 | 0.98-0.99 |
+| `loot` 1.0 | coop_real | coop_real, ataque_solo | 0.04-0.06 | 0.97-0.98 |
+| `detection_transmit` 0.3 | coop_real | solo, coop_real | 0.06-0.10 | 0.97-1.00 |
+| `detection_transmit` 0.05 | coop_real | solo, coop_real | 0.23-0.39 | 1.00 |
+
+- El botín no mueve las masas críticas, pero cambia la estabilidad: el vértice solo deja de ser
+  estable porque un atacante invade a los solos, y ataque_solo pasa a ser estable. Cooperar
+  sigue dominando.
+- La detección al transmitir solo pesa cuando compartir casi no emite: con 0.3 la masa crítica
+  de cooperadores sube poco y con 0.05 pasa de 0.04-0.07 a 0.23-0.39. Con valores cercanos al
+  defecto no hay efecto, porque a 200 pasos casi todo emisor es descubierto de todos modos.
+
+Propuesta para el barrido secundario (el equipo decide): `loot` en {0, 0.5} y
+`detection_transmit` en {defecto, 0.05}. El 1.0 repite el resultado del 0.5 y el 0.3 queda entre
+el defecto y el 0.05 sin cambiar el régimen.
 
 ## Límites
 
@@ -360,4 +423,4 @@ con una detección base muy baja.
   agotar 6 pasos); otra mejor podría acercarse más a coop_ideal.
 - El atacante único dispara al primer contacto; otras políticas de ataque pueden dar otros
   pagos.
-- No se modeló botín ni defensa contra proyectiles.
+- Sin `env.loot` no hay botín; tampoco se modeló defensa contra proyectiles.

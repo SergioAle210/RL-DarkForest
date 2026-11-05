@@ -79,8 +79,10 @@ def baseline_returns(cfg: Config, seeds: int, episodes: int) -> dict[str, tuple[
         "env.anomaly.noise_std": cfg.env.anomaly.noise_std,
         "env.projectiles_cancel_on_death": cfg.env.projectiles_cancel_on_death,
     }
-    if cfg.env.detection_growth is not None:
-        over["env.detection_growth"] = cfg.env.detection_growth
+    over["env.loot"] = cfg.env.loot
+    for name in ("detection_growth", "detection_transmit"):
+        if getattr(cfg.env, name) is not None:
+            over[f"env.{name}"] = getattr(cfg.env, name)
     results = {}
     for mode, margin in BASELINES.items():
         runs = [

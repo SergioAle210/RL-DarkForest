@@ -257,3 +257,38 @@ def test_expired_contacts_are_masked_and_cannot_be_attacked():
     assert not env.get_obs(key, state).det_mask.any()
     out = jax.jit(env.step)(key, state, jnp.array([8, 1]))
     assert not out.info.launches.any()
+
+
+@pytest.mark.parametrize("loot", [0.0, 0.5])
+def test_loot_transfers_a_share_of_the_victim_resources(loot):
+    """Con botín, quien elimina gana la fracción indicada de lo que tenía la víctima."""
+    env = environment(p_kill=1, loot=loot)
+    key = jax.random.PRNGKey(2)
+    _, state = env.reset(key)
+    state = state.replace(
+        pos=jnp.array([[0.0, 0.0], [0.2, 0.0]]), contact_t=jnp.array([[-1, 0], [0, -1]])
+    )
+    step = jax.jit(env.step)
+    out = step(key, state, jnp.array([8, 1]))
+    before = float(out.state.resources[0])
+    victim = float(out.state.resources[1])
+    for _ in range(3):
+        out = step(key, out.state, jnp.array([1, 1]))
+    np.testing.assert_array_equal(out.state.alive, [True, False])
+    assert float(out.state.resources[1]) == 0
+    assert float(out.state.resources[0]) == pytest.approx(before + loot * victim, rel=1e-5)
+
+
+def test_detection_transmit_sets_how_visible_sharing_is():
+    """Con detection_transmit en 0, compartir tampoco delata; por defecto sí."""
+    seen = {}
+    for transmit in (None, 0.0):
+        env = environment(detection_low=0, detection_transmit=transmit)
+        key = jax.random.PRNGKey(11)
+        _, state = env.reset(key)
+        state = state.replace(pos=jnp.array([[0.0, 0.0], [0.05, 0.0]]))
+        step = jax.jit(env.step)
+        measured = step(key, state, jnp.array([2, 1]))
+        shared = step(key, measured.state, jnp.array([7, 1]))
+        seen[transmit] = bool(shared.obs.det_mask[1, 0])
+    assert seen == {None: True, 0.0: False}

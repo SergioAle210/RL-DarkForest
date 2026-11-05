@@ -42,7 +42,7 @@
 | Traer al repo los diagnósticos con políticas fijas y sus pruebas | Ricardo | listo | 2026-10-27 |
 | Reformular H1 y documentar el diagnóstico de diseño con políticas fijas | Ricardo | listo | 2026-10-27 |
 | Implementar y medir la detección graduada de quien crece (detection_growth) | Ricardo | listo | 2026-10-28 |
-| Decidir qué valores de detección base y de crecer entran al barrido, y si el botín y la detección garantizada pasan a ser parámetros | | | |
+| Decidir qué valores de detección base y de crecer entran al barrido, y si el botín y la detección garantizada pasan a ser parámetros | Bianca | en proceso | 2026-11-03 |
 
 ## Políticas y modelo
 
