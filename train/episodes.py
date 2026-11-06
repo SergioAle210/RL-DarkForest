@@ -86,13 +86,13 @@ def save_episode(
     return path
 
 
-def checkpoint_policy(path: str | Path) -> tuple[Config, NetworkPolicy]:
+def checkpoint_policy(path: str | Path, greedy: bool = False) -> tuple[Config, NetworkPolicy]:
     """Carga los pesos para inferencia; conserva la configuración del entrenamiento."""
     path = Path(path)
     cfg = load_config(path.parent.parent / "config.yaml")
     checkpoint = serialization.msgpack_restore(path.read_bytes())
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
-    return cfg, NetworkPolicy(model, checkpoint["train_state"]["params"])
+    return cfg, NetworkPolicy(model, checkpoint["train_state"]["params"], greedy=greedy)
 
 
 def main() -> None:
