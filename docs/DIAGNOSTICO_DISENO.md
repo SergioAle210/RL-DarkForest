@@ -233,6 +233,51 @@ y otra con `env.channel_enabled=false`. Evaluar cada `final.msgpack` con
 `train.evaluar_checkpoint --baselines` y comparar retorno y supervivencia entre variantes y
 contra ignorar. Si el canal importa con λ = 0 hay una fuga de información o un error del entorno.
 
+### Comprobación con agentes entrenados (I-03)
+
+Dos corridas, GPU (Kaggle, 2×T4), 5 seeds por variante, `configs/h1_sanity.yaml`,
+`train.self_play.rho=0`. Fecha: 6 de noviembre de 2026.
+
+**Primer intento, `train.total_steps=5242880` (320 actualizaciones):**
+
+| Variante | retorno medio | supervivencia media | muertes por ataque | acción atacar |
+|---|---|---|---|---|
+| con canal | +0.79 | 0.18 | 0.82 | 0.056 |
+| sin canal | +0.43 | 0.14 | 0.86 | 0.081 |
+
+Con solo 320 actualizaciones la política no podó el impulso de atacar (4%-12% de las acciones),
+así que ambas copias de la misma red (comparten parámetros) se eliminaban entre sí antes de que
+el retorno de crecer se acumulara. Inconcluso: se repitió con el doble de pasos.
+
+**Repetición, `train.total_steps=10485760` (640 actualizaciones, el mismo presupuesto que A-09):**
+
+| Variante | retorno medio | retorno por seed | supervivencia media |
+|---|---|---|---|
+| con canal | +1.87 | 1.854, 1.872, 1.981, 1.825, 1.834 | 0.355 |
+| sin canal | +2.05 | 2.299, 2.303, 1.549, 2.219, 1.863 | 0.369 |
+
+Baselines fijos (iguales en todas las variantes, como corresponde con λ = 0): ignorar +9.065,
+solo +8.866, coop_real +8.318, oráculo +8.953, supervivencia 1.000 en las tres.
+
+La diferencia entre variantes se invirtió de signo respecto al primer intento (ahí ganaba con
+canal por +0.36, aquí gana sin canal por +0.18, más chico que la dispersión entre seeds de
+`sin_canal` solo) y la diferencia de +1.87 contra +2.05 queda dentro del error esperado entre
+seeds. Es la firma de ruido, no de un efecto sistemático del canal: **no hay evidencia de fuga
+de información cuando λ = 0**, lo que es consistente con H1.
+
+Dicho eso, ninguna de las dos variantes se acerca a ignorar ni con 640 actualizaciones:
+supervivencia 35%-37% y 60%-69% de las muertes siguen siendo por ataques entre las dos copias
+de la misma política, que todavía dedica 9%-28% de las acciones a ocultarse y 1.8%-3.7% a
+atacar en vez de crecer. Repite el mismo patrón que A-09 (la red con 10.5M pasos y radio 0.45
+tampoco superó a ignorar): con los presupuestos de cómputo probados hasta ahora, IPPO no
+converge a la estrategia trivialmente óptima de solo crecer, ni siquiera cuando no hay ninguna
+anomalía que evitar.
+
+**Conclusión para H1:** evidencia parcial a favor. Descarta una fuga de información grande y
+obvia por el canal, pero no es una confirmación limpia porque ninguna red juega cerca de bien
+todavía — el cuello de botella sigue siendo el mismo que en A-09: el entrenamiento no converge
+a "solo crecer" en los presupuestos de cómputo probados.
+
 ## Costo de ignorar (A09)
 
 Con el radio 0.25 de la zona, una civilización que nunca se refugia sobrevive el 79% de los

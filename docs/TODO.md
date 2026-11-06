@@ -97,7 +97,7 @@
 | Implementar el barajado de mensajes y medirlo con políticas fijas | Bianca | listo | 2026-11-02 |
 | Preparar Colab y medir el presupuesto de cómputo (kernel de Kaggle en CPU; GPU pendiente de verificar la cuenta) | Bianca | en proceso | 2026-11-02 |
 | Evaluar parámetros secundarios con comparaciones controladas | | | |
-| Evaluar H1 empíricamente y diagnosticar resultados inesperados | | | |
+| Evaluar H1 empíricamente y diagnosticar resultados inesperados | Mónica | en proceso | 2026-11-06 |
 | Medir el costo de ignorar la anomalía (radio de la zona) y corregir las políticas fijas del evaluador | Bianca | listo | 2026-11-01 |
 | Entrenar con el radio 0.45 en cinco seeds y comparar contra ignorar | Bianca | listo | 2026-11-02 |
 | Ejecutar el barrido exploratorio de tres por tres con tres seeds | | | |
