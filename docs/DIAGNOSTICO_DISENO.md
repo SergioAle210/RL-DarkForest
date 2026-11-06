@@ -249,29 +249,63 @@ Con solo 320 actualizaciones la política no podó el impulso de atacar (4%-12% 
 así que ambas copias de la misma red (comparten parámetros) se eliminaban entre sí antes de que
 el retorno de crecer se acumulara. Inconcluso: se repitió con el doble de pasos.
 
-**Repetición, `train.total_steps=10485760` (640 actualizaciones, el mismo presupuesto que A-09):**
+**Repetición, `train.total_steps=10485760` (640 actualizaciones, el mismo presupuesto que A-09),
+evaluada por muestreo (como en A-09) y con `--greedy` (acción de mayor probabilidad, agregado en
+esta rama a `NetworkPolicy`, `darkforest/networks.py`):**
 
-| Variante | retorno medio | retorno por seed | supervivencia media |
-|---|---|---|---|
-| con canal | +1.87 | 1.854, 1.872, 1.981, 1.825, 1.834 | 0.355 |
-| sin canal | +2.05 | 2.299, 2.303, 1.549, 2.219, 1.863 | 0.369 |
+| | con canal, muestreo | con canal, greedy | sin canal, muestreo | sin canal, greedy |
+|---|---|---|---|---|
+| seed 0 | +1.854 (0.361) | +2.236 (1.000) | +2.299 (0.380) | +2.296 (0.391) |
+| seed 1 | +1.872 (0.351) | +6.890 (0.964) | +2.216 (0.369) | +2.560 (0.405) |
+| seed 2 | +2.077 (0.387) | +2.788 (1.000) | +1.549 (0.308) | +2.669 (0.436) |
+| seed 3 | +1.825 (0.324) | +2.252 (0.390) | +2.219 (0.382) | +7.693 (0.987) |
+| seed 4 | +1.834 (0.365) | +6.384 (1.000) | +1.533 (0.310) | +7.115 (0.985) |
+| media | +1.89 | +4.11 | +1.96 | +4.47 |
 
-Baselines fijos (iguales en todas las variantes, como corresponde con λ = 0): ignorar +9.065,
-solo +8.866, coop_real +8.318, oráculo +8.953, supervivencia 1.000 en las tres.
+(supervivencia entre paréntesis). Baselines fijos (iguales en todas las variantes, como
+corresponde con λ = 0): ignorar +9.065, solo +8.866, coop_real +8.318, oráculo +8.953,
+supervivencia 1.000 en las tres. Repetir el entrenamiento con los mismos seeds no reproduce
+los números exactos de una corrida a otra (hay no determinismo de GPU); las diferencias son
+del orden de 0.1-0.2, no cambian ninguna lectura de abajo.
 
-La diferencia entre variantes se invirtió de signo respecto al primer intento (ahí ganaba con
-canal por +0.36, aquí gana sin canal por +0.18, más chico que la dispersión entre seeds de
-`sin_canal` solo) y la diferencia de +1.87 contra +2.05 queda dentro del error esperado entre
-seeds. Es la firma de ruido, no de un efecto sistemático del canal: **no hay evidencia de fuga
-de información cuando λ = 0**, lo que es consistente con H1.
+**Con muestreo las dos variantes rinden parecido** (+1.89 contra +1.96) y la diferencia no es
+sistemática: ya se había visto que cambia de signo entre corridas (ver el primer intento) y es
+más chica que la dispersión entre seeds. **No hay evidencia de fuga de información por el canal
+cuando λ = 0**, consistente con H1.
 
-Dicho eso, ninguna de las dos variantes se acerca a ignorar ni con 640 actualizaciones:
-supervivencia 35%-37% y 60%-69% de las muertes siguen siendo por ataques entre las dos copias
-de la misma política, que todavía dedica 9%-28% de las acciones a ocultarse y 1.8%-3.7% a
-atacar en vez de crecer. Repite el mismo patrón que A-09 (la red con 10.5M pasos y radio 0.45
-tampoco superó a ignorar): con los presupuestos de cómputo probados hasta ahora, IPPO no
-converge a la estrategia trivialmente óptima de solo crecer, ni siquiera cuando no hay ninguna
-anomalía que evitar.
+**Con greedy aparece el hallazgo inesperado: la convergencia es bimodal, y no por el canal.**
+En cada variante, 2 de 5 seeds "resuelven" el mundo al evaluarlos sin ruido de muestreo:
+retorno +6.4 a +7.7, supervivencia 96%-99%, prácticamente sin atacar (cerca de "solo", +8.866).
+Las otras 3 seeds de cada variante se quedan en +2.2-2.8, con dos patrones distintos de por qué:
+`con_canal` se queda mayormente pasiva (ocultarse 65%-71% de las acciones, 0 ataques en 2 de 3
+seeds atoradas) y `sin_canal` se queda mayormente violenta (seguir atacando 1%-5% de las
+acciones incluso en el modo más probable, en las 3 seeds atoradas). El patrón —dos seeds que
+escapan, tres que no— se repite casi idéntico en ambas variantes, lo que de nuevo apunta a que
+es una propiedad de la optimización (qué tan buena salga cada corrida independiente), no del
+canal.
+
+Con muestreo este patrón queda escondido: el ruido de la distribución categórica mete ataques y
+muertes incluso en las seeds que sí aprendieron a no atacar, por eso el retorno por muestreo es
+parecido entre todas las seeds (+1.5 a +2.3) aunque la política de fondo sea muy distinta.
+Repite en parte el patrón de A-09 (la red con 10.5M pasos y radio 0.45 tampoco superó a
+ignorar): con los presupuestos de cómputo probados hasta ahora, una fracción relevante de
+las corridas de IPPO no converge a la estrategia trivialmente óptima de solo crecer, ni
+siquiera cuando no hay ninguna anomalía que evitar — pero ahora se ve que no es uniforme: hay
+una fracción de seeds que sí lo logra.
+
+**Conclusión para H1:** evidencia a favor, más sólida que con el primer intento. No hay fuga de
+información por el canal con λ = 0 en ninguna de las dos lecturas (muestreo o greedy), y el
+patrón de convergencia bimodal es idéntico entre variantes, así que tampoco es el canal el que
+decide qué seeds "resuelven" el mundo. Sigue sin ser una confirmación perfecta porque la
+muestra es chica (5 seeds por variante) para una distribución bimodal, pero ya no depende de
+adivinar si el ruido de muestreo escondía algo: con greedy se ve con claridad qué aprendió cada
+red.
+
+Pendiente, para quien lo retome: investigar qué distingue a las seeds que escapan del óptimo
+pobre de las que no (¿la trayectoria de las primeras iteraciones?, ¿la norma del gradiente
+inicial?), y si entrenar bastante más tiempo "arrastra" a las atoradas hacia el buen óptimo o si
+es un atractor permanente. También evaluar en greedy las redes de A-09 (λ = 1, radio 0.45) para
+ver si la misma bimodalidad explica por qué esas tampoco le ganan a ignorar.
 
 **Conclusión para H1:** evidencia parcial a favor. Descarta una fuga de información grande y
 obvia por el canal, pero no es una confirmación limpia porque ninguna red juega cerca de bien
