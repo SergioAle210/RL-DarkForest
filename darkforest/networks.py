@@ -53,18 +53,27 @@ def flatten_obs(obs: Obs) -> jax.Array:
 class NetworkPolicy:
     """Adaptador de la GRU al protocolo compartido de políticas."""
 
-    def __init__(self, model: ActorCriticGRU, params: Any) -> None:
-        """Conserva la arquitectura y sus parámetros aprendidos."""
+    def __init__(self, model: ActorCriticGRU, params: Any, greedy: bool = False) -> None:
+        """Conserva la arquitectura y sus parámetros aprendidos.
+
+        Con greedy=True actúa con la acción de mayor probabilidad (argmax de los logits) en
+        vez de muestrear; sirve para evaluar qué aprendió la red sin el ruido de exploración
+        residual de la distribución categórica. Por defecto muestrea, igual que en entrenamiento.
+        """
         self.model = model
         self.params = params
+        self.greedy = greedy
 
     def init_carry(self, n_agents: int) -> jax.Array:
         """Reinicia la memoria al comenzar un episodio."""
         return self.model.initial_carry(n_agents, self.model.hidden)
 
     def act(self, key: jax.Array, carry: jax.Array, obs: Obs) -> tuple[jax.Array, jax.Array]:
-        """Muestrea desde el actor y anula la memoria de agentes eliminados."""
+        """Actúa desde el actor (muestreo o greedy) y anula la memoria de agentes eliminados."""
         carry = jnp.where(obs.alive[..., None], carry, 0)
         carry, logits, _ = self.model.apply(self.params, carry, flatten_obs(obs), obs.agent_id)
-        actions = jax.random.categorical(key, logits)
+        if self.greedy:
+            actions = jnp.argmax(logits, axis=-1)
+        else:
+            actions = jax.random.categorical(key, logits)
         return jnp.where(obs.alive[..., None], carry, 0), jnp.where(obs.alive, actions, 1)

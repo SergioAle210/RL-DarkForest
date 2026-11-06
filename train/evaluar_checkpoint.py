@@ -109,11 +109,18 @@ def main() -> None:
     p.add_argument("--episodes", type=int, default=400)
     p.add_argument("--seed", type=int, default=100)
     p.add_argument("--baselines", action="store_true")
+    p.add_argument(
+        "--greedy",
+        action="store_true",
+        help="actúa con la acción de mayor probabilidad en vez de muestrear",
+    )
     args = p.parse_args()
-    cfg, policy = checkpoint_policy(args.checkpoint)
+    cfg, policy = checkpoint_policy(args.checkpoint, greedy=args.greedy)
     result = evaluate(cfg, policy, args.seed, args.episodes)
+    modo = "greedy" if args.greedy else "muestreo"
     print(
-        f"Red entrenada, {args.episodes} episodios de {cfg.env.max_steps} pasos, seed {args.seed}"
+        f"Red entrenada ({modo}), {args.episodes} episodios de {cfg.env.max_steps} pasos, "
+        f"seed {args.seed}"
     )
     print(
         f"  retorno por civilización {result['mean_return']:+.3f}, "
