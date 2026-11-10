@@ -402,7 +402,9 @@ function metricas() {
   if (ep.deception) h += tarjeta("Mentiras", r.mentiras, "mediciones falsas");
   h += tarjeta("Ataques", r.ataques, `${r.muertes_por_ataque} muertes por ataque`);
   $("metricas").innerHTML = h;
-  $("nota_episodio").textContent = p ? "" : "Un episodio no es representativo: activa «Promediar 40 episodios» para ver el promedio.";
+  $("nota_episodio").textContent = p ? "" : ep.n > 2
+    ? "Un episodio no es representativo; el promedio de 40 episodios solo está disponible con 2 civilizaciones."
+    : "Un episodio no es representativo: activa «Promediar 40 episodios» para ver el promedio.";
   $("titulo").textContent = ep.policy.replaceAll("fijo:", "").replaceAll("red:", "red ").slice(0, 60) + " · semilla " + ep.seed;
 }
 function tabla() {
@@ -729,6 +731,8 @@ function bucle(ts) {
 }
 requestAnimationFrame(t => { ultimo = t; bucle(t); });
 try { NARR.activo = localStorage.getItem("modo") !== "cientifico"; } catch (e) {}
+for (const tipo of ["input", "change"]) $("controlesVivos").addEventListener(tipo, actualizar);
+$("vel").addEventListener("input", actualizar);
 actualizar(); cargar();
 </script>
 </body>
