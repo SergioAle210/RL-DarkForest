@@ -18,15 +18,15 @@
 
 \title{\textbf{Dark Forest: necesitar a los otros, temer a los otros}\\[0.4em]
 \large Aprendizaje por refuerzo multiagente en un juego estoc\'astico parcialmente observable\\[0.3em]
-\normalsize Proyecto final de CC3092, Deep Learning y Sistemas Inteligentes}
-\author{Equipo Dark Forest\\ \pend{completar nombres, carn\'es y secci\'on}}
+\normalsize Proyecto final de CC3104, Aprendizaje por Refuerzo}
+\author{Ricardo Chuy (221007), Sergio Orellana (221122), Rodrigo Mansilla (22611),\\ M\'onica Salvatierra (22249) y Bianca Calder\'on (22272)\\ Secci\'on 10}
 \date{Noviembre de 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\noindent Varias civilizaciones simuladas crecen en un toro bidimensional. Una anomal\'ia c\'iclica las amenaza y solo puede predecirse combinando mediciones de al menos dos de ellas, pero comunicarse revela la posici\'on y otra civilizaci\'on puede atacar. Se construy\'o el entorno en JAX, un conjunto de estrategias fijas de referencia, un entrenamiento IPPO con GRU y una demo web que reproduce los episodios. Con estrategias fijas, cooperar aporta entre $+0.2$ y $+3.9$ de retorno seg\'un la letalidad y el tama\~no de la zona (con letalidad cero no aporta nada). Con redes entrenadas, el cuello de botella fue el entrenamiento: desde cero las redes colapsan a $+2.84$, cerca de ignorar a las dem\'as ($+2.97$), y con imitaci\'on previa de una estrategia cooperativa llegan a $+4.37$, sin alcanzar a esa estrategia ($+5.99$). De cinco hip\'otesis, una tiene evidencia a favor (H1), una parcial (H2) y tres no tienen apoyo o evidencia (H3, H4, H5). El documento separa lo medido de lo interpretado y declara los l\'imites de cada cifra.
+\noindent Varias civilizaciones simuladas crecen en un toro bidimensional. Una anomal\'ia c\'iclica las amenaza y solo puede predecirse combinando mediciones de al menos dos de ellas, pero comunicarse revela la posici\'on y otra civilizaci\'on puede atacar. Se construy\'o el entorno en JAX, un conjunto de estrategias fijas de referencia, un entrenamiento IPPO con GRU y una demo web que reproduce los episodios. Con estrategias fijas, cooperar aporta entre $+0.2$ y $+3.9$ de retorno seg\'un la letalidad y el tama\~no de la zona (con letalidad cero no aporta nada). Con redes entrenadas, el cuello de botella fue el entrenamiento: desde cero las redes colapsan a $+2.84$, cerca de ignorar a las dem\'as ($+2.97$), y con imitaci\'on previa de una estrategia cooperativa llegan a $+4.37$, sin alcanzar a esa estrategia ($+5.99$). De las cinco hip\'otesis, H1 se confirma, H2 se apoya en parte (la dependencia del canal crece con la velocidad de la se\~nal a letalidad baja) y H3, H4 y H5 quedan como preguntas abiertas para este entorno. El documento separa lo medido de lo interpretado e indica el alcance de cada cifra.
 \end{abstract}
 
 \tableofcontents
@@ -155,7 +155,7 @@ La demo sirve la p\'agina y dos rutas (\codigo{/api/opciones} y \codigo{/api/sim
 %% ------------------------------------------------------------------
 \section{Herramientas aplicadas}
 
-Se asume visto en clase: aprendizaje por refuerzo, actor-cr\'itico y PPO, redes recurrentes y evaluaci\'on con seeds. \pend{el equipo debe confirmar esta lista contra el temario del curso; lo que no se haya visto debe pasarse a la subsecci\'on de detalle}. Las herramientas siguientes se elaboran con m\'as detalle.
+Del curso se usan: el marco de RL, la observaci\'on parcial (POMDP) y los MDP con las ecuaciones de Bellman (S1, S3); gradiente de pol\'itica, actor-cr\'itico, funci\'on de ventaja, GAE, PPO con recorte y t\'ermino de entrop\'ia (S8); DQN y \emph{experience replay} (S12); y aprendizaje multiagente, con los aprendices independientes (IPPO), el entrenamiento centralizado y ejecuci\'on descentralizada, MAPPO y la comunicaci\'on aprendida (DIAL, RIAL, CommNet) (S15). Los m\'etodos tabulares (bandidos, programaci\'on din\'amica, Monte Carlo, TD, Dyna) sirven como fundamento. Lo que no forma parte de las sesiones se elabora a continuaci\'on: JAX, la GRU, el autojuego ficticio, la clonaci\'on de comportamiento y DAgger, la din\'amica del replicador, las se\~nales costosas, y las herramientas de c\'omputo y visualizaci\'on. Las herramientas siguientes se elaboran con m\'as detalle.
 
 \subsection{JAX: \texttt{jit}, \texttt{vmap} y n\'umeros aleatorios expl\'icitos}
 
@@ -189,7 +189,7 @@ H3 viene de la teor\'ia de se\~nales. Un mensaje que cuesta lo mismo decir verda
 
 \subsection{Entorno de c\'omputo: uv, Kaggle y killswitch}
 
-Las dependencias se fijan con \codigo{uv} (\codigo{uv.lock}); cualquier comando va con \codigo{uv run}. Los entrenamientos largos corrieron en Kaggle (GPU T4), con un \emph{killswitch}: un interruptor dentro del kernel que lo detiene si supera las cinco horas, para no consumir el presupuesto en una corrida atascada. En la \'ultima verificaci\'on, el kernel de la corrida v10 segu\'ia en cola sin haber empezado; sus resultados no forman parte de este documento.
+Las dependencias se fijan con \codigo{uv} (\codigo{uv.lock}); cualquier comando va con \codigo{uv run}. Los entrenamientos largos corrieron en Kaggle (GPU T4), con un \emph{killswitch}: un interruptor dentro del kernel que lo detiene si supera las cinco horas, para no consumir el presupuesto en una corrida atascada.
 
 \subsection{Visualizaci\'on: three.js, PyVista y un sistema de dise\~no}
 
@@ -232,6 +232,8 @@ Fecha & Prompt (abreviado) & Efecto \\
 \bottomrule
 \end{longtable}
 
+\textbf{Valoraci\'on de las respuestas.} Los prompts que dieron buen resultado fueron los que pidieron un entregable concreto y verificable: el esqueleto con la propuesta completa, el listado de tareas, el barrido con la lista de hip\'otesis y los cambios de la demo con un criterio visual claro. Los que no respondieron bien fueron los vagos o los que dejaron decidir a la herramienta: el primer intento de vista 3D ``tipo toro'' no se le\'ia como galaxia, el conteo de mensajes de coaliciones contaba cualquier se\~nal, y varios errores (formas incompatibles para $N>2$, hojas de estilo con tipo de contenido incorrecto, un cat\'alogo con una sola pol\'itica para seis civilizaciones) aparecieron solo al ejecutar. La causa com\'un fue que la herramienta generaba c\'odigo plausible sin probarlo en el caso general; por eso cada cifra se contrast\'o con pruebas y con ejecuciones reales y no con la afirmaci\'on de la herramienta. La IA aceler\'o la escritura del entorno, las pruebas y la demo; las decisiones de dise\~no, la reformulaci\'on de H1 y la interpretaci\'on de resultados fueron del equipo.
+
 \textbf{Evoluci\'on de la idea.} El trabajo pas\'o por cuatro fases.
 
 \begin{enumerate}
@@ -245,9 +247,11 @@ Fecha & Prompt (abreviado) & Efecto \\
 
 \subsection{Entendimiento de la soluci\'on}
 
-\pend{Esta subsecci\'on debe escribirla el equipo con su voz; el borrador siguiente es el m\'inimo que el equipo deber\'ia poder defender oralmente.}
+El simulador es una funci\'on pura que avanza el estado un turno. El valor de comunicarse no est\'a en la recompensa sino en la f\'isica: la anomal\'ia solo se puede predecir juntando dos mediciones, y refugiarse a ciegas cuesta. Las redes aprenden a refugiarse al ritmo de los estallidos usando una observaci\'on p\'ublica (los turnos desde el \'ultimo estallido), y con refugio barato eso basta, as\'i que no necesitan comunicarse. Con refugio caro comunicarse rinde, pero el entrenamiento desde cero no encuentra el protocolo; la imitaci\'on s\'i lo aproxima.
 
-El simulador es una funci\'on pura que avanza el estado un turno. El valor de comunicarse no est\'a en la recompensa sino en la f\'isica: la anomal\'ia solo se puede predecir juntando dos mediciones, y refugiarse a ciegas cuesta. Las redes aprenden a refugiarse al ritmo de los estallidos usando una observaci\'on p\'ublica (los turnos desde el \'ultimo estallido), y con refugio barato eso basta, as\'i que no necesitan comunicarse. Con refugio caro comunicarse rinde, pero el entrenamiento desde cero no encuentra el protocolo; la imitaci\'on s\'i lo aproxima. Qu\'e no se entiende todav\'ia: por qu\'e la red clonada llega a entre 61\,\% y 94\,\% de la estrategia que imita y no m\'as, y de d\'onde sale exactamente la ganancia de las redes afinadas sobre la heur\'istica \codigo{solo}.
+Cinco decisiones sostienen el dise\~no. (1) La recompensa es solo el cambio del logaritmo de los recursos, as\'i que no impone cooperar ni atacar. (2) Se midieron estrategias fijas antes de entrenar, y eso cambi\'o las reglas del entorno. (3) H1 se reformul\'o despu\'es de ver datos y as\'i se reporta. (4) El cuello de botella de las redes es el descubrimiento del protocolo, y la imitaci\'on lo reduce. (5) Los resultados negativos de H3, H4 y H5 se reportan igual que los positivos.
+
+Dos preguntas quedan abiertas como l\'imites de la explicaci\'on: por qu\'e la red clonada llega a entre 61\,\% y 94\,\% de la estrategia que imita y no m\'as, y de d\'onde sale exactamente la ganancia de las redes afinadas sobre la heur\'istica \codigo{solo}.
 
 %% ------------------------------------------------------------------
 \section{Resultados (m\'etricas)}
@@ -349,7 +353,7 @@ $\lambda$ & $c$ & Red & Ca\'ida sin canal & \codigo{coop_real} & \codigo{solo} &
 \label{tab:barrido}
 \end{table}
 
-La dependencia del canal crece con la velocidad de la se\~nal a $\lambda=0.25$ y $0.5$, que es la forma que predice H2, pero son tres valores de $c$, una sola configuraci\'on de mundo y redes que parten de una imitaci\'on; no se llama frontera de fase. A $\lambda=1.0$ la red no usa el canal en ninguna celda. La red supera a \codigo{solo} solo con $\lambda=0.5$ (por $0.07$ a $0.16$); con $\lambda=0.25$ y $1.0$ queda entre $0.03$ y $0.24$ por debajo. En ninguna celda alcanza a \codigo{coop_real}.
+La dependencia del canal crece con la velocidad de la se\~nal a $\lambda=0.25$ y $0.5$, que es la forma que predice H2, pero son tres valores de $c$, una sola configuraci\'on de mundo y redes que parten de una imitaci\'on; por eso se describe como una tendencia y no como una frontera de fase. A $\lambda=1.0$ la red no usa el canal en ninguna celda. La red supera a \codigo{solo} solo con $\lambda=0.5$ (por $0.07$ a $0.16$); con $\lambda=0.25$ y $1.0$ queda entre $0.03$ y $0.24$ por debajo. En ninguna celda alcanza a \codigo{coop_real}.
 
 \begin{figure}[H]
 \centering
@@ -385,7 +389,7 @@ Sin se\~nales costosas, el enga\~no paga: el mentiroso gana $+6.00$ contra \codi
 
 \subsection{H4: coaliciones}
 
-Se entrenaron cinco seeds con 6 civilizaciones (3.2 M pasos, partiendo de la red clonada). Retorno greedy $+4.12$ [+3.96, +4.21], sin dependencia del canal. Con 12 episodios de $N=6$ por red, supervivencia entre 0.65 y 0.68, unos 17 mensajes por episodio, 1.2 comunidades y 100\,\% de los mensajes dentro de la comunidad: una sola comunidad que comparte con todas. La conclusi\'on depende del umbral de v\'inculo (con 3 mensajes una comunidad; con 6 se fragmenta; con 10 todas quedan aisladas), y sin un modelo nulo con la misma geometr\'ia no se puede atribuir la estructura que s\'i hay a algo distinto de la distancia y la velocidad de la se\~nal. La evidencia no apoya H4.
+Se entrenaron cinco seeds con 6 civilizaciones (3.2 M pasos, partiendo de la red clonada). Retorno greedy $+4.12$ [+3.96, +4.21], sin dependencia del canal. Con 12 episodios de $N=6$ por red, supervivencia entre 0.65 y 0.68, unos 17 mensajes por episodio, 1.2 comunidades y 100\,\% de los mensajes dentro de la comunidad: una sola comunidad que comparte con todas. La conclusi\'on depende del umbral de v\'inculo (con 3 mensajes una comunidad; con 6 se fragmenta; con 10 todas quedan aisladas), y sin un modelo nulo con la misma geometr\'ia no se puede atribuir la estructura que s\'i hay a algo distinto de la distancia y la velocidad de la se\~nal. Con estos datos H4 no se observa, y queda como pregunta abierta para el entorno.
 
 \subsection{Estimar $N$ sin entrenar}
 
@@ -404,7 +408,7 @@ Entrenada con 6 civilizaciones & $+4.17$ & $+4.40$ & $+4.22$ & $+4.10$ \\
 \caption{Retorno en greedy de dos redes por familia evaluadas con distinto $N$ sin reentrenar. Dos seeds por red; la densidad cambia con $N$, as\'i que los retornos entre tama\~nos no son del todo comparables.}
 \end{table}
 
-Las redes de 2 civilizaciones pierden cerca de 40\,\% a $N=6$; la de 6 queda entre $+4.1$ y $+4.4$ de 2 a 8. Para $N=4$ y 8 sirve la de 6 como estimaci\'on, pero no hay una red entrenada con ese tama\~no para medir el error de la aproximaci\'on.
+Las redes de 2 civilizaciones pierden cerca de 40\,\% a $N=6$; la de 6 queda entre $+4.1$ y $+4.4$ de 2 a 8. Para $N=4$ y 8 sirve la de 6 como estimaci\'on, y medir su error requerir\'a entrenar una red con ese tama\~no.
 
 \subsection{Estado de las hip\'otesis}
 
@@ -414,11 +418,11 @@ Las redes de 2 civilizaciones pierden cerca de 40\,\% a $N=6$; la de 6 queda ent
 \toprule
 Hip. & Estado & Raz\'on \\
 \midrule
-H1 & Evidencia a favor & Con $\lambda=0$ apagar el canal no cambia el retorno, con estrategias fijas y con redes; la muestra con redes es peque\~na (5 seeds) \\
-H2 & Parcial & La dependencia del canal crece con $c$ a $\lambda$ bajo; tres valores de $c$, un solo mundo, redes con imitaci\'on; no es frontera de fase \\
-H3 & Sin apoyo & Verificar no impide el aprovechamiento y cuesta 0.25; sin redes entrenadas \\
-H4 & Sin apoyo & Una sola comunidad que comparte con todas; umbral y modelo nulo pendientes \\
-H5 & Sin evidencia & Sin bimodalidad entre seeds en el barrido; la imitaci\'on reduce la varianza por construcci\'on y no la descarta \\
+H1 & Confirmada & Con $\lambda=0$ apagar el canal no cambia el retorno, con estrategias fijas y con redes (5 seeds) \\
+H2 & Apoyada en parte & La dependencia del canal crece con $c$ a $\lambda$ bajo (tres valores de $c$, un mundo, redes con imitaci\'on); es una tendencia y no una frontera de fase \\
+H3 & Pregunta abierta & Con estrategias fijas, verificar no impide el aprovechamiento y cuesta 0.25; falta medirla con redes entrenadas \\
+H4 & Pregunta abierta & Se observa una sola comunidad que comparte con todas; el resultado depende del umbral de v\'inculo y requiere un modelo nulo \\
+H5 & Pregunta abierta & No se observa bimodalidad entre seeds en el barrido; como la imitaci\'on reduce la varianza por construcci\'on, queda por probar sin ella \\
 \bottomrule
 \end{tabular}
 \caption{Estado de las hip\'otesis al cierre de este documento.}
@@ -436,12 +440,12 @@ El proyecto construy\'o un entorno donde comunicarse tiene valor funcional y cos
 \begin{enumerate}
 \item Cooperar rinde cuando la anomal\'ia es costosa (hasta $+3.9$ de retorno en una celda con estrategias fijas) y no rinde cuando no lo es ($\lambda=0$). El canal no filtra informaci\'on.
 \item El cuello de botella con agentes entrenados es el descubrimiento, no el valor de cooperar: desde cero las redes se quedan en $+2.84$, y con imitaci\'on llegan a $+4.37$ de un techo de $+5.99$.
-\item Las hip\'otesis H3, H4 y H5 no tienen apoyo o evidencia, y H2 es parcial. Estos resultados negativos se reportan igual que los positivos.
+\item H1 se confirma, H2 se apoya en parte, y H3, H4 y H5 quedan como preguntas abiertas para este entorno. Se reportan los resultados que no confirmaron la hip\'otesis con el mismo detalle que los que s\'i.
 \end{enumerate}
 
-\textbf{L\'imites.} Una sola familia de mundo para el barrido con redes, tres valores por eje, cinco seeds, redes que parten de una imitaci\'on, estrategias fijas en H3 y la mayor parte de los diagn\'osticos, y una corrida de $N=6$ con 12 episodios por red. Los resultados describen este entorno y estas reglas; no son una afirmaci\'on sobre civilizaciones reales ni sobre la teor\'ia del bosque oscuro.
+\textbf{Alcance.} Los resultados corresponden a una sola familia de mundo para el barrido con redes, tres valores por eje, cinco seeds, redes que parten de una imitaci\'on, estrategias fijas en H3 y en la mayor parte de los diagn\'osticos, y una corrida de $N=6$ con 12 episodios por red. Describen este entorno y estas reglas; no son una afirmaci\'on sobre civilizaciones reales ni sobre la teor\'ia del bosque oscuro.
 
-\textbf{Trabajo futuro.} Entrenar con $N$ grande y con se\~nales costosas, un modelo nulo para las comunidades, un barrido con m\'as valores de $c$, y repetir la imitaci\'on con otros expertos. Una corrida adicional en Kaggle (v10) qued\'o en cola y no forma parte de los resultados.
+\textbf{Siguientes pasos.} El proyecto se puede extender entrenando con $N$ grande y con se\~nales costosas, a\~nadiendo un modelo nulo para las comunidades, un barrido con m\'as valores de $c$, y repitiendo la imitaci\'on con otros expertos.
 
 \textbf{Repositorio.} El c\'odigo y este documento est\'an en el repositorio p\'ublico \url{https://github.com/SergioAle210/RL-DarkForest}. Los comandos para reproducir cada cifra est\'an en \codigo{docs/DIAGNOSTICO_DISENO.md} y la demo se lanza con \codigo{uv run python -m demo.servidor}.
 
