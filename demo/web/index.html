@@ -395,17 +395,16 @@ function tarjeta(etiqueta, valor, nota, clase = "") {
 function metricas() {
   if (!ep) return; const r = ep.resumen, p = ep.promedio, f = x => (x >= 0 ? "+" : "") + x.toFixed(2);
   let h = "";
-  if (p) h += tarjeta("Retorno medio", p.retorno.map(f).join(" / "), `promedio de ${p.episodios} episodios`, "ob-metric--hl wide");
+  const resto = ep.n > 2 ? " (civilización 1 / media del resto)" : "";
+  if (p) h += tarjeta("Retorno medio", p.retorno.map(f).join(" / "), `promedio de ${p.episodios} episodios${resto}`, "ob-metric--hl wide");
   h += tarjeta("Retorno", r.retorno.slice(0, 2).map(f).join(" / "), "este episodio" + (r.retorno.length > 2 ? " (civilizaciones 1 y 2)" : ""), p ? "" : "ob-metric--hl wide");
-  if (p) h += tarjeta("Supervivencia", p.supervivencia.join(" / "), "fracción viva, promedio");
+  if (p) h += tarjeta("Supervivencia", p.supervivencia.join(" / "), "fracción viva, promedio" + resto);
   h += tarjeta("Mensajes", r.mensajes, "compartir y símbolos");
   if (ep.deception) h += tarjeta("Mentiras", r.mentiras, "mediciones falsas");
   h += tarjeta("Ataques", r.ataques, `${r.muertes_por_ataque} muertes por ataque`);
   $("metricas").innerHTML = h;
-  $("nota_episodio").textContent = p ? "" : ep.n > 2
-    ? "Un episodio no es representativo; el promedio de 40 episodios solo está disponible con 2 civilizaciones."
-    : "Un episodio no es representativo: activa «Promediar 40 episodios» para ver el promedio.";
-  $("titulo").textContent = ep.policy.replaceAll("fijo:", "").replaceAll("red:", "red ").slice(0, 60) + " · semilla " + ep.seed;
+  $("nota_episodio").textContent = p ? "" : "Un episodio no es representativo: activa «Promediar 40 episodios» para ver el promedio.";
+  $("titulo").textContent = ep.policy.replaceAll("fijo:", "").replaceAll("red:", "red ").replaceAll(" (seed 0)", "") + " · semilla " + ep.seed;
 }
 function tabla() {
   if (!ep) return; const t = Math.min(Math.floor(frame), ep.steps), k0 = Math.min(t, ep.steps - 1);

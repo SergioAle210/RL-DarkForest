@@ -122,6 +122,33 @@ def jugador(spec: str, cfg, clave_mundo: str, voraz: bool):
     return POLITICAS[clave]
 
 
+def promedio_resto(cfg, reset, step, a, b, episodios: int, seed: int) -> dict:
+    """Varios episodios en paralelo con A en la civilización 1 y B en el resto.
+
+    Devuelve retorno y supervivencia medios de la civilización 1 y del resto en conjunto.
+    """
+    key, reset_key = jax.random.split(jax.random.PRNGKey(seed))
+    obs, state = reset(jax.random.split(reset_key, episodios))
+    n = state.alive.shape[1]
+    aux = socios.initial_auxiliar(episodios, n)
+    carry_a, carry_b = a[2](episodios), b[2](episodios)
+    total = jnp.zeros((episodios, n))
+    for _ in range(cfg.env.max_steps):
+        key, key_a, key_b, step_key = jax.random.split(key, 4)
+        carry_a, act_a = a[1](key_a, carry_a, state, obs, aux)
+        carry_b, act_b = b[1](key_b, carry_b, state, obs, aux)
+        actions = act_b.astype(jnp.int32).at[:, 0].set(act_a[:, 0].astype(jnp.int32))
+        out = step(jax.random.split(step_key, episodios), state, actions)
+        aux = socios.update_auxiliar(cfg, aux, state, out.state, actions)
+        total += out.reward
+        state, obs = out.state, out.obs
+    total, vivos = np.asarray(total), np.asarray(state.alive, dtype=float)
+    return {
+        "retorno": [float(total[:, 0].mean()), float(total[:, 1:].mean())],
+        "supervivencia": [float(vivos[:, 0].mean()), float(vivos[:, 1:].mean())],
+    }
+
+
 def simular(mundo: dict, politicas: list[str], seed: int, voraz: bool, promediar: int = 0) -> dict:
     """Un episodio completo con las políticas dadas, exportado para la interfaz."""
     overrides = {
@@ -191,10 +218,13 @@ def simular(mundo: dict, politicas: list[str], seed: int, voraz: bool, promediar
         "muertes_por_ataque": int((traj["info_death_cause"] == 2).sum()),
     }
     datos["mundo"] = {**POR_DEFECTO, **mundo}
-    if promediar and n == 2:
+    if promediar:
         with LOCK:
             a, b = (jugador(p, cfg, clave_mundo, voraz) for p in politicas[:2])
-            media = play(cfg, a, b, promediar, seed + 1000)
+            if n == 2:
+                media = play(cfg, a, b, promediar, seed + 1000)
+            else:
+                media = promedio_resto(cfg, reset, step, a, b, promediar, seed + 1000)
         datos["promedio"] = {
             "episodios": promediar,
             "retorno": [round(x, 2) for x in media["retorno"]],
