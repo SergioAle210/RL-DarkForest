@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba: planetas y escala de Kardashev</title>
+<style>
+  :root { --void: #05070d; --surface: #0e1420; --ink: #e8edf6; --muted: #8b97ad; --line: #243049; }
+  body { margin: 0; padding: 16px; background: var(--void); color: var(--ink);
+    font-family: system-ui, sans-serif; }
+  h1 { font-size: 20px; } h2 { font-size: 15px; color: var(--muted); margin: 24px 0 8px; }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .celda { background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px; text-align: center; font-size: 13px; }
+  .celda canvas { display: block; margin: 0 auto 4px; }
+  .par { display: flex; justify-content: center; gap: 8px; align-items: center; }
+  #escena3d, #kard3d { width: 100%; height: 360px; display: block; border-radius: 8px;
+    background: #000; }
+  .kard svg { display: block; margin: 4px auto 0; color: var(--ink); }
+</style>
+</head>
+<body>
+<h1>Planetas procedurales y escala de Kardashev</h1>
+<p style="color:var(--muted)">Apariencia decorativa y determinista. La escala de Kardashev es
+una metafora ilustrativa: los recursos son adimensionales.</p>
+
+<h2>Los ocho mundos en 2D (izquierda: vivo con rotacion; derecha: miniatura; abajo: apagado)</h2>
+<div class="rejilla" id="mundos2d"></div>
+
+<h2>Escena 3D con los ocho mundos (arrastra para girar)</h2>
+<canvas id="escena3d"></canvas>
+
+<h2>Escala de Kardashev, niveles 0, 1.4, 2.5 y 3 (2D)</h2>
+<div class="rejilla" id="kard2d"></div>
+
+<h2>Escala de Kardashev en 3D, niveles 0, 1.4, 2.5 y 3</h2>
+<canvas id="kard3d"></canvas>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="modulos/estilos.js"></script>
+<script src="modulos/planetas.js"></script>
+<script src="modulos/kardashev.js"></script>
+<script>
+(function () {
+  "use strict";
+  const OB = window.OB;
+  const MUNDOS = ["oceanico", "selvatico", "helado", "nebuloso", "desertico", "volcanico",
+    "gaseoso", "cristalino"];
+  const T = { sun: "#ffd36b", ink: "#e8edf6", share: "#8fdcff" };
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+  function lienzo(w, h, pad) {
+    const c = document.createElement("canvas");
+    c.width = w * dpr; c.height = h * dpr;
+    c.style.width = w + "px"; c.style.height = h + "px";
+    c.getContext("2d").scale(dpr, dpr);
+    pad.appendChild(c);
+    return c;
+  }
+
+  // Rejilla 2D de mundos.
+  const animados = [];
+  MUNDOS.forEach((m, i) => {
+    const celda = document.createElement("div");
+    celda.className = "celda";
+    const par = document.createElement("div");
+    par.className = "par";
+    const c1 = lienzo(130, 130, par);
+    par.appendChild(OB.planeta.miniatura(m, i + 1, 56));
+    celda.appendChild(par);
+    const c2 = lienzo(60, 60, celda);
+    celda.appendChild(document.createTextNode(m));
+    document.getElementById("mundos2d").appendChild(celda);
+    animados.push(function (t) {
+      const a = c1.getContext("2d"), b = c2.getContext("2d");
+      a.clearRect(0, 0, 130, 130);
+      b.clearRect(0, 0, 60, 60);
+      OB.planeta.canvas(a, m, i + 1, 65, 65, 50, t, { viva: true });
+      OB.planeta.canvas(b, m, i + 1, 30, 30, 24, t, { viva: false });
+    });
+  });
+
+  // Kardashev 2D: planeta oceanico y la etapa.
+  [0, 1.4, 2.5, 3].forEach((n) => {
+    const celda = document.createElement("div");
+    celda.className = "celda kard";
+    const c = lienzo(190, 190, celda);
+    const medio = document.createElement("div");
+    medio.innerHTML = OB.kardashev.medidorSvg(n, 170);
+    celda.appendChild(medio);
+    const e = OB.kardashev.etapa(n);
+    celda.appendChild(document.createTextNode("Etapa " + e.id + ": " + e.nombre));
+    document.getElementById("kard2d").appendChild(celda);
+    animados.push(function (t) {
+      const g = c.getContext("2d");
+      g.clearRect(0, 0, 190, 190);
+      OB.planeta.canvas(g, "oceanico", 2, 95, 95, 30, t, { viva: true });
+      OB.kardashev.canvas(g, 95, 95, 30, n, t, T);
+    });
+  });
+
+  // Escenas 3D.
+  function escena(canvas, anchoVista) {
+    const r = new THREE.WebGLRenderer({ canvas, antialias: true });
+    r.setPixelRatio(dpr);
+    const s = new THREE.Scene();
+    s.background = new THREE.Color(0x02030a);
+    const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+    s.add(new THREE.AmbientLight(0x334055, 0.6));
+    const sol = new THREE.DirectionalLight(0xffffff, 1.4);
+    sol.position.set(6, 3, 5);
+    s.add(sol);
+    const ctl = new THREE.OrbitControls(cam, canvas);
+    function ajustar() {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      r.setSize(w, h, false);
+      cam.aspect = w / h;
+      cam.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", ajustar);
+    ajustar();
+    return { r, s, cam, ctl };
+  }
+
+  const E1 = escena(document.getElementById("escena3d"));
+  E1.cam.position.set(0, 4, 11);
+  const grupos = MUNDOS.map((m, i) => {
+    const g = OB.planeta.three(THREE, m, i + 1, 1);
+    g.position.set((i % 4 - 1.5) * 3, i < 4 ? 1.5 : -1.5, 0);
+    E1.s.add(g);
+    return g;
+  });
+  // Dos planetas apagados para comparar.
+  const GRUPO_MUERTO = [0, 5];
+
+  const E2 = escena(document.getElementById("kard3d"));
+  E2.cam.position.set(0, 3, 14);
+  const ks = [0, 1.4, 2.5, 3].map((n, i) => {
+    const p = OB.planeta.three(THREE, "oceanico", 2, 1);
+    const k = OB.kardashev.three(THREE, 1);
+    const cont = new THREE.Group();
+    cont.position.set((i - 1.5) * 5, 0, 0);
+    cont.add(p, k);
+    E2.s.add(cont);
+    return { p, k, n };
+  });
+
+  function bucle(ms) {
+    const t = ms / 1000;
+    animados.forEach((f) => f(t));
+    grupos.forEach((g, i) => g.userData.actualizar(t, { viva: !GRUPO_MUERTO.includes(i) }));
+    ks.forEach((o) => {
+      o.p.userData.actualizar(t, { viva: true });
+      o.k.userData.actualizar(o.n, t);
+    });
+    E1.ctl.update(); E2.ctl.update();
+    E1.r.render(E1.s, E1.cam);
+    E2.r.render(E2.s, E2.cam);
+    requestAnimationFrame(bucle);
+  }
+  requestAnimationFrame(bucle);
+})();
+</script>
+</body>
+</html>

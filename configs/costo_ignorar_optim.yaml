@@ -1,0 +1,21 @@
+# Igual que costo_ignorar pero con cambios solo del optimizador: minibatches por entorno,
+# crítico a escala unitaria y entropía alta que decae. No cambia el entorno ni la recompensa.
+extends: base.yaml
+env:
+  n_civs: 2
+  detection_growth: 0.05
+  anomaly:
+    lethality: 0.5
+    radius: 0.45
+train:
+  n_envs: 1024
+  rollout_len: 64
+  total_steps: 10_485_760
+  num_minibatches: 8
+  update_epochs: 4
+  reward_scale: 0.2
+  ent_coef: 0.05
+  ent_coef_final: 0.005
+  max_grad_norm: 1.0
+  self_play:
+    rho: 0.0

@@ -103,8 +103,8 @@ class DarkForestEnv:
 
     def _check_features(self) -> None:
         """Rechaza extensiones cuyo mecanismo aún no está implementado."""
-        if self.cfg.costly_signals or self.cfg.anomaly.interfere:
-            raise NotImplementedError("Señales costosas e interferencia siguen pendientes")
+        if self.cfg.anomaly.interfere:
+            raise NotImplementedError("La interferencia de señales sigue pendiente")
 
     def _contacts(self, state: EnvState) -> tuple[jax.Array, jax.Array]:
         """Ordena contactos recientes sin revelar el número total de emisores."""
@@ -150,13 +150,17 @@ class DarkForestEnv:
         slot = jnp.clip(argument, 0, cfg.max_detections - 1)
         targets = sources[agents, slot]
         target_known = masks[agents, slot]
-        costs = jnp.array(
-            [0, 0, cfg.cost_obs, cfg.cost_tx, cfg.cost_tx, cfg.cost_atk, cfg.cost_ref]
-        )
+        # H3: con deception el último símbolo de transmitir fabrica una medición falsa que parece
+        # un compartir; con costly_signals el compartir verdadero cuesta más y lleva etiqueta
+        is_lie = (kind == 3) & (argument == cfg.n_symbols - 1) & cfg.deception
+        share_cost = cfg.cost_verify if cfg.costly_signals else cfg.cost_tx
+        costs = jnp.array([0, 0, cfg.cost_obs, cfg.cost_tx, share_cost, cfg.cost_atk, cfg.cost_ref])
         cost = costs[jnp.maximum(kind, 0)]
         allowed = state.alive & (kind >= 0) & (state.resources >= cost)
         allowed &= (kind != 5) | target_known
-        allowed &= (kind != 4) | (state.last_meas[:, 0] > 0)
+        allowed &= ((kind != 4) & ~is_lie) | (state.last_meas[:, 0] > 0)
+        allowed &= (kind != 4) | cfg.share_enabled
+        is_lie &= allowed
         kind = jnp.where(allowed, kind, -1)
         resources = state.resources - jnp.where(allowed, cost, 0)
         resources *= jnp.where(kind == 0, 1 + cfg.growth, 1)
@@ -171,18 +175,26 @@ class DarkForestEnv:
         last_meas = jnp.where((kind == 2)[:, None], measurement, state.last_meas)
         until = jnp.where(kind == 6, state.t + cfg.refuge_duration, state.refuge_until)
         refuge = (until >= now) & state.alive
-        symbol = jnp.where(kind == 3, argument, jnp.where(kind == 4, cfg.n_symbols, -1))
+        # etiqueta del mensaje: n_symbols es un compartir sin verificar (verdadero o falso) y
+        # n_symbols + 1 uno verificado, que quien miente no puede emitir
+        true_tag = cfg.n_symbols + 1 if cfg.costly_signals else cfg.n_symbols
+        symbol = jnp.where(kind == 3, argument, jnp.where(kind == 4, true_tag, -1))
+        symbol = jnp.where(is_lie, cfg.n_symbols, symbol)
         symbol = jnp.where(cfg.channel_enabled, symbol, -1)
         sent = last_meas
         if cfg.shuffle_messages:
             sent = self._shuffled(jax.random.fold_in(key, 7), last_meas)
-        content = jnp.concatenate(
-            [
-                symbol[:, None],
-                jnp.where(((kind == 4) & cfg.channel_enabled)[:, None], sent, 0),
-            ],
-            axis=1,
-        )
+        if cfg.deception:
+            fake_theta = anomaly.sample_theta(jax.random.fold_in(key, 11), cfg.anomaly)
+            fake = anomaly.measure(
+                jax.random.fold_in(key, 13), fake_theta, angle, cfg.anomaly.noise_std
+            )
+            fake_meas = jnp.concatenate(
+                [jnp.ones((n, 1)), jnp.cos(angle)[:, None], jnp.sin(angle)[:, None], fake], axis=1
+            )
+            sent = jnp.where(is_lie[:, None], fake_meas, sent)
+        carries = ((kind == 4) | is_lie) & cfg.channel_enabled
+        content = jnp.concatenate([symbol[:, None], jnp.where(carries[:, None], sent, 0)], axis=1)
         signal_slots = (state.t % (cfg.signal_slots // n)) * n + agents
         projectile_slots = (state.t % (cfg.projectile_slots // n)) * n + agents
         launched = kind == 5

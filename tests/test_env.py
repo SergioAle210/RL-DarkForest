@@ -181,9 +181,8 @@ def test_reward_is_only_log_growth():
 
 def test_unimplemented_extensions_are_explicit():
     """Evita ejecutar ablaciones con opciones sin efecto."""
-    for option in ({"costly_signals": True}, {"anomaly": AnomalyConfig(interfere=True)}):
-        with pytest.raises(NotImplementedError, match="pendientes"):
-            environment(**option).reset(jax.random.PRNGKey(0))
+    with pytest.raises(NotImplementedError, match="pendiente"):
+        environment(anomaly=AnomalyConfig(interfere=True)).reset(jax.random.PRNGKey(0))
 
 
 def shared_message(shuffle, keys):

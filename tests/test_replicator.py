@@ -109,6 +109,16 @@ def test_regime_map_distinguishes_dominance_from_bistability(tmp_path):
     assert (tmp_path / "mapa.png").stat().st_size > 0
 
 
+def test_phase_diagram_plot_writes_a_file(tmp_path):
+    """El mapa de regímenes se dibuja con una celda dominante y una biestable."""
+    from analysis.phase_diagram import load_payoff_grid, plot_phase_diagram
+
+    write_cell(tmp_path, 0.25, 0.1, PRISONER)
+    write_cell(tmp_path, 1.0, 0.1, STAG)
+    plot_phase_diagram(load_payoff_grid(tmp_path), tmp_path / "fases.png")
+    assert (tmp_path / "fases.png").stat().st_size > 0
+
+
 def test_critical_mass_matches_known_games_and_its_interval_brackets_the_value():
     """En la caza del ciervo vale 2/3; en el dilema es 0 para traicionar y 1 para cooperar."""
     assert critical_mass(STAG, invader=0, resident=1) == pytest.approx(2 / 3)

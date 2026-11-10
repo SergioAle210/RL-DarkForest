@@ -1,0 +1,18 @@
+<!-- @dsCard group="Controles" height=150 subtitle="Principal, secundario, ghost y estados" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>body{margin:0;padding:16px;background:var(--surface)} .row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px}</style></head>
+<body class="ob-root">
+<div class="row">
+  <button class="ob-btn ob-btn--primary">Simular</button>
+  <button class="ob-btn">Pausa</button>
+  <button class="ob-btn ob-btn--ghost">Reiniciar</button>
+  <button class="ob-btn" aria-label="Turno anterior">◀</button>
+</div>
+<div class="row">
+  <button class="ob-btn ob-btn--primary" aria-busy="true">Simulando…</button>
+  <button class="ob-btn" disabled>Pausa</button>
+  <button class="ob-btn ob-btn--primary" style="box-shadow:var(--shadow-glow)">Con resplandor</button>
+</div>
+</body></html>

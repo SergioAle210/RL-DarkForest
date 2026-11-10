@@ -1,0 +1,52 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400&display=swap">
+<style>
+  html, body { margin: 0; background: var(--void); }
+  svg { display: block; width: 960px; height: 288px; }
+  .ground { fill: var(--void); }
+  .sun { fill: var(--sun); } .share { fill: var(--share); } .burst { fill: var(--burst); }
+  .raised { fill: var(--raised); } .refuge { fill: var(--refuge); }
+  .band { rx: var(--radius-lg); }
+  .ring { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.55; }
+  .ring-dark { fill: none; stroke: var(--on-sun); stroke-width: 1; opacity: 0.6; }
+  .civ1 { fill: var(--civ-1); } .civ2 { fill: var(--civ-2); } .civ4 { fill: var(--civ-4); } .civ6 { fill: var(--civ-6); }
+  .name { font-family: var(--font-display); font-weight: 600; font-size: 64px; fill: var(--ink); }
+  .tag { font-family: var(--font-sans); font-size: 14px; fill: var(--muted); }
+</style></head>
+<body>
+<!-- Derivación.
+ Bloques: sun 240×104, raised 360×104, share 150×104, burst 110×104 y refuge 100×104 (tokens de color a todo valor), en una banda superior de 960 por 104.
+ Disposición: banda horizontal de bloques desiguales cortada al borde, como las franjas de una carta estelar; el nombre debajo, a la izquierda, sobre el fondo.
+ Patrón: anillos concéntricos de señal (radio 14 en 14) centrados en el bloque raised y en el sun, con cuatro discos civ-N como civilizaciones; se eligió porque el proyecto trata de señales que se propagan y de quién las oye.
+ Pasos y radios: bloques múltiplos de 4 px, esquinas con radius-lg, anillos de 1 px, nombre en 64 px (el nombre es ancho: esqueleto de banda superior). -->
+<svg viewBox="0 0 960 288" role="img" aria-label="Observatorio del Bosque Oscuro">
+  <rect class="ground" width="960" height="288"/>
+  <defs><clipPath id="banda"><rect width="960" height="104"/></clipPath></defs>
+  <g clip-path="url(#banda)">
+    <rect class="sun" x="0" y="0" width="240" height="104"/>
+    <rect class="raised" x="240" y="0" width="360" height="104"/>
+    <rect class="share" x="600" y="0" width="150" height="104"/>
+    <rect class="burst" x="750" y="0" width="110" height="104"/>
+    <rect class="refuge" x="860" y="0" width="100" height="104"/>
+    <g>
+      <circle class="ring-dark" cx="150" cy="60" r="14"/><circle class="ring-dark" cx="150" cy="60" r="28"/>
+      <circle class="ring-dark" cx="150" cy="60" r="42"/><circle class="ring-dark" cx="150" cy="60" r="56"/>
+      <circle class="ring-dark" cx="150" cy="60" r="70"/>
+    </g>
+    <g>
+      <circle class="ring" cx="420" cy="52" r="14"/><circle class="ring" cx="420" cy="52" r="28"/>
+      <circle class="ring" cx="420" cy="52" r="42"/><circle class="ring" cx="420" cy="52" r="56"/>
+      <circle class="ring" cx="420" cy="52" r="70"/><circle class="ring" cx="420" cy="52" r="84"/>
+    </g>
+    <circle class="civ1" cx="420" cy="52" r="6"/>
+    <circle class="civ2" cx="520" cy="28" r="5"/>
+    <circle class="civ4" cx="300" cy="80" r="4"/>
+    <circle class="civ6" cx="560" cy="84" r="4"/>
+  </g>
+  <text class="name" x="40" y="176">Observatorio del</text>
+  <text class="name" x="40" y="237">Bosque Oscuro</text>
+  <text class="tag" x="40" y="268">Un instrumento para observar quién se esconde y quién coopera.</text>
+</svg>
+</body></html>

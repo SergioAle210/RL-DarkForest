@@ -18,13 +18,14 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest", "ruff"]
 notebooks = ["jupyterlab", "ipykernel", "nbconvert"]
+visual3d = ["pyvista", "imageio", "imageio-ffmpeg"]
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["darkforest*", "train*", "analysis*", "viz*"]
+include = ["darkforest*", "train*", "analysis*", "viz*", "demo*"]
 
 [tool.ruff]
 line-length = 100

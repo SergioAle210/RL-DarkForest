@@ -114,14 +114,6 @@ def test_training_updates_and_checkpoint_replays(tmp_path):
         train(cfg, "prueba")
 
 
-def test_nonzero_selfplay_is_not_silently_ignored():
-    """El entrenador inicial informa que todavía no puede usar snapshots."""
-    cfg = tiny_config()
-    cfg = replace(cfg, train=replace(cfg.train, self_play=SelfPlayConfig(rho=0.3)))
-    with pytest.raises(NotImplementedError, match="rho=0"):
-        make_rollout(DarkForestEnv(cfg.env), cfg)
-
-
 def test_training_speed_measurement_reports_finite_positive_values():
     """El medidor ejecuta iteraciones reales y devuelve tiempos y estabilidad coherentes."""
     result = measure(tiny_config(), iterations=2)
@@ -188,3 +180,25 @@ def test_checkpoint_every_writes_a_resumable_checkpoint(tmp_path):
 def base_with_total(cfg, total):
     """Misma configuración con otro presupuesto, para comparar identificadores."""
     return replace(cfg, train=replace(cfg.train, total_steps=total))
+
+
+def test_snapshots_are_saved_and_replayable(tmp_path):
+    """Con save_snapshots se guardan los pesos periódicos y checkpoint_policy los lee."""
+    from darkforest.config import SelfPlayConfig
+    from train.episodes import checkpoint_policy
+
+    base = tiny_config(tmp_path)
+    cfg = replace(
+        base,
+        train=replace(
+            base.train,
+            total_steps=16,
+            save_snapshots=True,
+            self_play=SelfPlayConfig(rho=0.0, snapshot_every=2),
+        ),
+    )
+    train(cfg, "prueba")
+    files = sorted((run_dir(cfg, "prueba") / "snapshots").glob("iter_*.msgpack"))
+    assert [f.name for f in files] == ["iter_00002.msgpack", "iter_00004.msgpack"]
+    _, policy = checkpoint_policy(files[0])
+    assert policy is not None

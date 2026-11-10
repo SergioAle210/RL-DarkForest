@@ -1,0 +1,64 @@
+<!-- @dsCard group="Narrativa" height=470 subtitle="Registro de eventos con siete tipos, marca y palabra" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--surface); color: var(--ink); font: 400 15px/22px var(--font-sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+h2 { margin: 0 0 var(--space-2); font: 600 12px/16px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h2:not(:first-child) { margin-top: var(--space-5); }
+.nota { margin: var(--space-2) 0 0; font-size: 13px; line-height: 19px; color: var(--muted); }
+
+.ob-bitacora { max-height: 264px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.ob-bitacora__item { --c: var(--ink); display: grid; grid-template-columns: 44px 104px 1fr; gap: var(--space-2); align-items: baseline; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.ob-bitacora__item:last-child { border-bottom: 0; }
+.ob-bitacora__item[aria-current="true"] { background: var(--raised); box-shadow: inset 3px 0 0 var(--ink); }
+.ob-bitacora__turno { font: 500 13px/19px var(--font-mono); color: var(--muted); }
+.ob-bitacora__tipo { display: inline-flex; align-items: center; gap: var(--space-2); font: 600 12px/16px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-bitacora__tipo::before { content: ""; flex: none; width: 12px; height: 12px; background: var(--c); }
+.ob-bitacora__texto { font-size: 14px; line-height: 20px; color: var(--ink); }
+.ob-bitacora__vacio { margin: 0; padding: var(--space-3); font-size: 13px; line-height: 19px; color: var(--muted); }
+
+/* Cada tipo: su color y su forma, además de su palabra. */
+.ob-bitacora__item[data-tipo="estallido"] { --c: var(--burst); }
+.ob-bitacora__item[data-tipo="estallido"] .ob-bitacora__tipo::before { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+.ob-bitacora__item[data-tipo="muerte"] { --c: var(--dead); }
+.ob-bitacora__item[data-tipo="muerte"] .ob-bitacora__tipo::before { clip-path: polygon(35% 0, 65% 0, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0 65%, 0 35%, 35% 35%); }
+.ob-bitacora__item[data-tipo="ataque"] { --c: var(--danger); }
+.ob-bitacora__item[data-tipo="ataque"] .ob-bitacora__tipo::before { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.ob-bitacora__item[data-tipo="mensaje"] { --c: var(--share); }
+.ob-bitacora__item[data-tipo="mensaje"] .ob-bitacora__tipo::before { border-radius: 50%; }
+.ob-bitacora__item[data-tipo="mentira"] { --c: var(--lie); }
+.ob-bitacora__item[data-tipo="mentira"] .ob-bitacora__tipo::before { height: 7px; border-radius: 12px 12px 0 0; }
+.ob-bitacora__item[data-tipo="refugio"] { --c: var(--refuge); }
+.ob-bitacora__item[data-tipo="refugio"] .ob-bitacora__tipo::before { background: transparent; border: 3px solid var(--c); border-radius: 50%; }
+.ob-bitacora__item[data-tipo="hito"] { --c: var(--ink); }
+.ob-bitacora__item[data-tipo="hito"] .ob-bitacora__tipo::before { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+
+@media (max-width: 420px) {
+  .ob-bitacora__item { grid-template-columns: 44px 1fr; }
+  .ob-bitacora__texto { grid-column: 1 / -1; }
+}
+</style></head>
+<body>
+
+<h2>Hasta el turno 40</h2>
+<div class="ob-bitacora" role="log" aria-live="off" aria-label="Bitácora del episodio hasta el turno 40" tabindex="0">
+  <div class="ob-bitacora__item" data-tipo="mensaje"><span class="ob-bitacora__turno">T12</span><span class="ob-bitacora__tipo">Mensaje</span><span class="ob-bitacora__texto">C1 y C2 intercambian su primer mensaje. Siguiente resumen en el turno 37.</span></div>
+  <div class="ob-bitacora__item" data-tipo="hito"><span class="ob-bitacora__turno">T18</span><span class="ob-bitacora__tipo">Hito</span><span class="ob-bitacora__texto">C1 alcanza la etapa I, planetaria (escala ilustrativa).</span></div>
+  <div class="ob-bitacora__item" data-tipo="refugio"><span class="ob-bitacora__turno">T23</span><span class="ob-bitacora__tipo">Refugio</span><span class="ob-bitacora__texto">C4 empieza un refugio.</span></div>
+  <div class="ob-bitacora__item" data-tipo="mentira"><span class="ob-bitacora__turno">T27</span><span class="ob-bitacora__tipo">Mentira</span><span class="ob-bitacora__texto">C2 envía una medición falsa a C5.</span></div>
+  <div class="ob-bitacora__item" data-tipo="estallido"><span class="ob-bitacora__turno">T31</span><span class="ob-bitacora__tipo">Estallido</span><span class="ob-bitacora__texto">Estallido de la anomalía; C3 no estaba refugiada.</span></div>
+  <div class="ob-bitacora__item" data-tipo="muerte"><span class="ob-bitacora__turno">T31</span><span class="ob-bitacora__tipo">Muerte</span><span class="ob-bitacora__texto">C3 se apaga por la anomalía.</span></div>
+  <div class="ob-bitacora__item" data-tipo="ataque"><span class="ob-bitacora__turno">T38</span><span class="ob-bitacora__tipo">Ataque</span><span class="ob-bitacora__texto">C6 lanza una sonda contra C2.</span></div>
+  <div class="ob-bitacora__item" data-tipo="muerte" aria-current="true"><span class="ob-bitacora__turno">T40</span><span class="ob-bitacora__tipo">Muerte</span><span class="ob-bitacora__texto">C2 es eliminada por el ataque de C6.</span></div>
+</div>
+<p class="nota">La última entrada se resalta y la lista se desplaza hasta ella. Cada tipo tiene color, forma y palabra.</p>
+
+<h2>Sin eventos todavía</h2>
+<div class="ob-bitacora" role="log" aria-live="off" aria-label="Bitácora del episodio hasta el turno 0" tabindex="0">
+  <p class="ob-bitacora__vacio">Sin eventos hasta el turno 0.</p>
+</div>
+</body></html>

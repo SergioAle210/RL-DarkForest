@@ -1,0 +1,125 @@
+<!-- @dsCard group="Narrativa" height=560 subtitle="Ficha de sistema: astronauta, planeta, rasgos, datos y última acción" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--surface); color: var(--ink); font: 400 15px/22px var(--font-sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); }
+.nota { margin: var(--space-3) 0 0; font-size: 13px; line-height: 19px; color: var(--muted); }
+
+.ob-ficha { --c: var(--civ-1); display: grid; gap: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: var(--radius-lg); padding: var(--space-4); }
+.ob-ficha[data-dead="true"] { --c: var(--dead); }
+.ob-ficha__escaner { position: relative; height: 148px; overflow: hidden; background-color: var(--void); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 24px 24px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
+.ob-ficha__escaner::before, .ob-ficha__escaner::after { content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--ink); }
+.ob-ficha__escaner::before { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+.ob-ficha__escaner::after { right: 6px; bottom: 6px; border-left: 0; border-top: 0; }
+.ob-ficha__planeta { position: absolute; left: 20px; top: 24px; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, var(--ink), var(--c) 35%, var(--void) 100%); border: 1px solid var(--line-strong); }
+.ob-ficha[data-dead="true"] .ob-ficha__planeta { background: var(--dead); }
+.ob-ficha[data-dead="true"] .ob-ficha__planeta::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font: 500 48px/1 var(--font-mono); color: var(--void); }
+.ob-ficha__astronauta { position: absolute; right: 18px; bottom: 6px; display: block; }
+.ob-ficha__nombre { margin: 0; font: 600 20px/26px var(--font-display); color: var(--ink); }
+.ob-ficha__nombre small { display: block; font: 600 12px/16px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-ficha__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ob-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); font: 600 12px/16px var(--font-sans); color: var(--ink); background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); }
+.ob-chip[data-decorativo="true"] { border-style: dashed; color: var(--muted); font-weight: 400; }
+.ob-ficha__datos { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: 0; }
+.ob-ficha__stat { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+.ob-ficha__stat dt { font: 600 12px/16px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-ficha__stat dd { margin: 2px 0 0; font: 500 14px/20px var(--font-mono); color: var(--ink); }
+.ob-ficha__stat dd small { font: 400 12px/16px var(--font-sans); color: var(--muted); }
+.ob-ficha__stat svg { display: block; margin-top: var(--space-1); }
+.ob-ficha__stat polyline { fill: none; stroke: var(--c); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ob-ficha__accion { margin: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-ficha__accion strong { color: var(--ink); font-weight: 600; }
+
+.s { fill: var(--suit); } .a { fill: var(--acc); } .v { fill: var(--visor); }
+.o { stroke: var(--line-strong); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.g { fill: none; stroke: #14182a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.grieta { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+</style></head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-ola" viewBox="0 0 24 24"><path class="g" d="M3 10c3-4 5-4 9 0s6 4 9 0M3 16c3-4 5-4 9 0s6 4 9 0"/></symbol>
+    <symbol id="i-llama" viewBox="0 0 24 24"><path class="g" d="M12 3c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-7 1 2 2 2 3-5z"/></symbol>
+    <symbol id="b-coop" viewBox="0 0 96 120">
+      <rect class="a o" x="25" y="46" width="46" height="38" rx="14"/>
+      <rect class="s o" x="35" y="82" width="11" height="30" rx="5.5"/><rect class="s o" x="50" y="82" width="11" height="30" rx="5.5"/>
+      <ellipse class="s o" cx="48" cy="65" rx="20" ry="22"/>
+      <ellipse class="s o" cx="20" cy="60" rx="6" ry="14" transform="rotate(28 20 60)"/>
+      <ellipse class="s o" cx="76" cy="60" rx="6" ry="14" transform="rotate(-28 76 60)"/>
+      <circle class="s o" cx="48" cy="32" r="18"/><ellipse class="v o" cx="48" cy="33" rx="12" ry="9"/>
+      <circle class="a o" cx="48" cy="66" r="7"/><use href="#i-ola" x="42" y="60" width="12" height="12"/>
+    </symbol>
+    <symbol id="b-bel" viewBox="0 0 96 120">
+      <rect class="a o" x="22" y="36" width="8" height="30" rx="2"/><rect class="a o" x="66" y="36" width="8" height="30" rx="2"/>
+      <rect class="s o" x="33" y="84" width="13" height="28" rx="3"/><rect class="s o" x="50" y="84" width="13" height="28" rx="3"/>
+      <rect class="s o" x="12" y="56" width="11" height="26" rx="3"/><rect class="s o" x="73" y="56" width="11" height="26" rx="3"/>
+      <polygon class="s o" points="22,50 74,50 66,88 30,88"/>
+      <polygon class="a o" points="18,46 38,46 36,58 20,58"/><polygon class="a o" points="78,46 58,46 60,58 76,58"/>
+      <polygon class="a o" points="42,18 48,6 54,18"/>
+      <polygon class="s o" points="34,18 62,18 70,30 62,46 34,46 26,30"/>
+      <polygon class="v o" points="33,27 63,27 58,38 38,38"/>
+      <circle class="a o" cx="48" cy="68" r="7"/><use href="#i-llama" x="42" y="62" width="12" height="12"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="rejilla">
+
+  <article class="ob-ficha" style="--c: var(--civ-1)" aria-labelledby="fn1">
+    <div class="ob-ficha__escaner">
+      <span class="ob-ficha__planeta" data-decorativo="true" aria-hidden="true"></span>
+      <svg class="ob-ficha__astronauta" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff" viewBox="0 0 96 120" width="72" height="90" role="img" aria-labelledby="fa1">
+        <title id="fa1">Astronauta cooperadora, viva</title><use href="#b-coop" width="96" height="120"/>
+      </svg>
+    </div>
+    <h3 class="ob-ficha__nombre" id="fn1"><small>Civilización 1 · Sistema</small>Thalassa Prime</h3>
+    <ul class="ob-ficha__chips" aria-label="Rasgos">
+      <li class="ob-chip">Cooperadora</li>
+      <li class="ob-chip"><span aria-hidden="true">●</span> Emisión alta</li>
+      <li class="ob-chip">Viva</li>
+      <li class="ob-chip" data-decorativo="true">Mundo oceánico · decorativo</li>
+    </ul>
+    <dl class="ob-ficha__datos">
+      <div class="ob-ficha__stat"><dt>Recursos</dt><dd>9.40
+        <svg width="96" height="24" viewBox="0 0 96 24" role="img" aria-label="Recursos por turno: de 1.00 a 9.40"><polyline points="2,22 14,20 26,19 38,15 50,13 62,10 74,8 86,5 94,3"/></svg></dd></div>
+      <div class="ob-ficha__stat"><dt>Etapa</dt><dd>II <small>estelar, ilustrativa</small></dd></div>
+      <div class="ob-ficha__stat"><dt>Mensajes</dt><dd>12 <small>enviados</small> · 7 <small>recibidos</small></dd></div>
+      <div class="ob-ficha__stat"><dt>Turno</dt><dd>38/200</dd></div>
+    </dl>
+    <p class="ob-ficha__accion"><strong>Última acción</strong> · turno 38: compartir verificado con C3.</p>
+  </article>
+
+  <article class="ob-ficha" data-dead="true" aria-labelledby="fn2">
+    <div class="ob-ficha__escaner">
+      <span class="ob-ficha__planeta" data-decorativo="true" aria-hidden="true"></span>
+      <svg class="ob-ficha__astronauta" style="--suit:#4a2a26;--acc:#ff7a45;--visor:#ffb48a" viewBox="-4 -14 104 136" width="78" height="102" role="img" aria-labelledby="fa2">
+        <title id="fa2">Astronauta belicosa, muerta: a la deriva, visor apagado</title>
+        <g transform="translate(6 -2) rotate(22 48 112)"><use href="#b-bel" width="96" height="120" style="--visor:var(--dead)"/><path class="grieta" d="M40 28L47 34L43 39L53 43M47 34L55 29"/></g>
+      </svg>
+    </div>
+    <h3 class="ob-ficha__nombre" id="fn2"><small>Civilización 2 · Sistema</small>Ketu-47</h3>
+    <ul class="ob-ficha__chips" aria-label="Rasgos">
+      <li class="ob-chip">Belicosa</li>
+      <li class="ob-chip"><span aria-hidden="true">○</span> Sin emisión</li>
+      <li class="ob-chip">Eliminada</li>
+      <li class="ob-chip" data-decorativo="true">Mundo volcánico · decorativo</li>
+    </ul>
+    <dl class="ob-ficha__datos">
+      <div class="ob-ficha__stat"><dt>Recursos</dt><dd>3.10
+        <svg width="96" height="24" viewBox="0 0 96 24" role="img" aria-label="Recursos por turno: de 1.00 a 3.10, hasta el turno 31"><polyline points="2,22 14,20 26,17 38,14 50,12 62,11 66,11"/></svg></dd></div>
+      <div class="ob-ficha__stat"><dt>Etapa</dt><dd>I <small>planetaria, ilustrativa</small></dd></div>
+      <div class="ob-ficha__stat"><dt>Mensajes</dt><dd>4 <small>enviados</small> · 9 <small>recibidos</small></dd></div>
+      <div class="ob-ficha__stat"><dt>Turno</dt><dd>38/200</dd></div>
+    </dl>
+    <p class="ob-ficha__accion"><strong>Última acción</strong> · turno 30: crecer. Eliminada en el turno 31 por la anomalía.</p>
+  </article>
+
+</div>
+<p class="nota">El borde discontinuo marca un rasgo decorativo (mundo, nombre del sistema): no es un dato del episodio. Etapa, recursos, mensajes y estado salen de <code>ep</code>.</p>
+</body></html>

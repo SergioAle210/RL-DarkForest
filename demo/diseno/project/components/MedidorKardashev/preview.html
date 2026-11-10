@@ -1,0 +1,63 @@
+<!-- @dsCard group="Narrativa" height=380 subtitle="Barra de 0 a III con marcas I, II y III; escala ilustrativa" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--surface); color: var(--ink); font: 400 15px/22px var(--font-sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pila { display: grid; gap: var(--space-4); max-width: 420px; }
+.nota { margin: var(--space-4) 0 0; max-width: 420px; font-size: 13px; line-height: 19px; color: var(--muted); }
+
+.ob-kard { --c: var(--share); --nivel: 0; display: grid; gap: var(--space-1); }
+.ob-kard__cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-kard__cabecera strong { color: var(--ink); font-weight: 600; }
+.ob-kard__valor { font: 500 14px/20px var(--font-mono); color: var(--ink); }
+.ob-kard__pista { position: relative; height: 12px; margin: 4px 0; background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ob-kard__relleno { position: absolute; inset: 0 auto 0 0; width: calc(var(--nivel) / 3 * 100%); background: var(--c); border-radius: inherit; }
+.ob-kard__marca { position: absolute; top: -5px; bottom: -5px; left: calc(var(--m) / 3 * 100%); width: 2px; margin-left: -1px; background: var(--ink); }
+.ob-kard__marca[data-extremo="fin"] { margin-left: -2px; }
+.ob-kard__escala { position: relative; height: 18px; font: 500 13px/18px var(--font-mono); color: var(--muted); }
+.ob-kard__etiqueta { position: absolute; left: calc(var(--m) / 3 * 100%); transform: translateX(-50%); }
+.ob-kard__etiqueta[data-extremo="ini"] { transform: none; }
+.ob-kard__etiqueta[data-extremo="fin"] { transform: translateX(-100%); }
+.ob-kard__etiqueta[data-alcanzada="true"] { color: var(--ink); font-weight: 600; }
+</style></head>
+<body>
+
+<div class="pila">
+
+  <div class="ob-kard" style="--nivel:0" role="meter" aria-label="Escala de Kardashev, ilustrativa" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Nivel 0.00 de 3: etapa 0, planetaria incipiente. Escala ilustrativa">
+    <div class="ob-kard__cabecera"><span>C4 · <strong>Etapa 0</strong> · planetaria incipiente</span><span class="ob-kard__valor">0.00</span></div>
+    <div class="ob-kard__pista"><span class="ob-kard__relleno"></span><i class="ob-kard__marca" style="--m:1"></i><i class="ob-kard__marca" style="--m:2"></i><i class="ob-kard__marca" data-extremo="fin" style="--m:3"></i></div>
+    <div class="ob-kard__escala" aria-hidden="true"><span class="ob-kard__etiqueta" data-extremo="ini" style="--m:0">0</span><span class="ob-kard__etiqueta" style="--m:1">I</span><span class="ob-kard__etiqueta" style="--m:2">II</span><span class="ob-kard__etiqueta" data-extremo="fin" style="--m:3">III</span></div>
+  </div>
+
+  <div class="ob-kard" style="--nivel:0.84; --c: var(--civ-2)" role="meter" aria-label="Escala de Kardashev, ilustrativa" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0.84" aria-valuetext="Nivel 0.84 de 3: etapa 0, planetaria incipiente. Escala ilustrativa">
+    <div class="ob-kard__cabecera"><span>C2 · <strong>Etapa 0</strong> · planetaria incipiente</span><span class="ob-kard__valor">0.84</span></div>
+    <div class="ob-kard__pista"><span class="ob-kard__relleno"></span><i class="ob-kard__marca" style="--m:1"></i><i class="ob-kard__marca" style="--m:2"></i><i class="ob-kard__marca" data-extremo="fin" style="--m:3"></i></div>
+    <div class="ob-kard__escala" aria-hidden="true"><span class="ob-kard__etiqueta" data-extremo="ini" style="--m:0" data-alcanzada="true">0</span><span class="ob-kard__etiqueta" style="--m:1">I</span><span class="ob-kard__etiqueta" style="--m:2">II</span><span class="ob-kard__etiqueta" data-extremo="fin" style="--m:3">III</span></div>
+  </div>
+
+  <div class="ob-kard" style="--nivel:1.67; --c: var(--civ-3)" role="meter" aria-label="Escala de Kardashev, ilustrativa" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1.67" aria-valuetext="Nivel 1.67 de 3: etapa I, planetaria. Escala ilustrativa">
+    <div class="ob-kard__cabecera"><span>C3 · <strong>Etapa I</strong> · planetaria</span><span class="ob-kard__valor">1.67</span></div>
+    <div class="ob-kard__pista"><span class="ob-kard__relleno"></span><i class="ob-kard__marca" style="--m:1"></i><i class="ob-kard__marca" style="--m:2"></i><i class="ob-kard__marca" data-extremo="fin" style="--m:3"></i></div>
+    <div class="ob-kard__escala" aria-hidden="true"><span class="ob-kard__etiqueta" data-extremo="ini" style="--m:0" data-alcanzada="true">0</span><span class="ob-kard__etiqueta" style="--m:1" data-alcanzada="true">I</span><span class="ob-kard__etiqueta" style="--m:2">II</span><span class="ob-kard__etiqueta" data-extremo="fin" style="--m:3">III</span></div>
+  </div>
+
+  <div class="ob-kard" style="--nivel:2.35; --c: var(--civ-1)" role="meter" aria-label="Escala de Kardashev, ilustrativa" aria-valuemin="0" aria-valuemax="3" aria-valuenow="2.35" aria-valuetext="Nivel 2.35 de 3: etapa II, estelar. Escala ilustrativa">
+    <div class="ob-kard__cabecera"><span>C1 · <strong>Etapa II</strong> · estelar</span><span class="ob-kard__valor">2.35</span></div>
+    <div class="ob-kard__pista"><span class="ob-kard__relleno"></span><i class="ob-kard__marca" style="--m:1"></i><i class="ob-kard__marca" style="--m:2"></i><i class="ob-kard__marca" data-extremo="fin" style="--m:3"></i></div>
+    <div class="ob-kard__escala" aria-hidden="true"><span class="ob-kard__etiqueta" data-extremo="ini" style="--m:0" data-alcanzada="true">0</span><span class="ob-kard__etiqueta" style="--m:1" data-alcanzada="true">I</span><span class="ob-kard__etiqueta" style="--m:2" data-alcanzada="true">II</span><span class="ob-kard__etiqueta" data-extremo="fin" style="--m:3">III</span></div>
+  </div>
+
+  <div class="ob-kard" style="--nivel:3; --c: var(--civ-5)" role="meter" aria-label="Escala de Kardashev, ilustrativa" aria-valuemin="0" aria-valuemax="3" aria-valuenow="3" aria-valuetext="Nivel 3.00 de 3: etapa III, galáctica. Escala ilustrativa">
+    <div class="ob-kard__cabecera"><span>C5 · <strong>Etapa III</strong> · galáctica</span><span class="ob-kard__valor">3.00</span></div>
+    <div class="ob-kard__pista"><span class="ob-kard__relleno"></span><i class="ob-kard__marca" style="--m:1"></i><i class="ob-kard__marca" style="--m:2"></i><i class="ob-kard__marca" data-extremo="fin" style="--m:3"></i></div>
+    <div class="ob-kard__escala" aria-hidden="true"><span class="ob-kard__etiqueta" data-extremo="ini" style="--m:0" data-alcanzada="true">0</span><span class="ob-kard__etiqueta" style="--m:1" data-alcanzada="true">I</span><span class="ob-kard__etiqueta" style="--m:2" data-alcanzada="true">II</span><span class="ob-kard__etiqueta" data-extremo="fin" style="--m:3" data-alcanzada="true">III</span></div>
+  </div>
+
+</div>
+<p class="nota">Escala ilustrativa: los recursos del entorno son adimensionales. El nivel es 3·ln(recursos)/ln(12), acotado a 0–3, y no mide energía ni potencia física.</p>
+</body></html>

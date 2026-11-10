@@ -23,8 +23,10 @@ from darkforest.config import ACTIONS, Config, load_config
 from darkforest.env import DarkForestEnv
 from darkforest.networks import ActorCriticGRU, NetworkPolicy, flatten_obs
 from darkforest.types import EnvState, Obs
+from train import socios
 from train.episodes import collect_episode, save_episode
 from train.logging_utils import Logger, record_resume
+from train.selfplay import Population
 
 
 @struct.dataclass
@@ -35,11 +37,15 @@ class RunnerState:
     obs: Obs
     carry: jax.Array
     reset: jax.Array
+    assign: jax.Array  # (B, N) código de política de cada civilización, ver train.socios
+    aux: socios.Auxiliar  # memoria de las estrategias fijas
+    pop_carry: jax.Array  # memoria de la red del snapshot que juega como socio
 
 
 def initialize(cfg: Config, key: jax.Array) -> tuple[TrainState, RunnerState]:
     """Inicializa entornos independientes, parámetros y optimizador."""
     env_key, model_key = jax.random.split(key)
+    assign_key = jax.random.fold_in(key, 1)
     env = DarkForestEnv(cfg.env)
     obs, state = jax.vmap(env.reset)(jax.random.split(env_key, cfg.train.n_envs))
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
@@ -49,38 +55,60 @@ def initialize(cfg: Config, key: jax.Array) -> tuple[TrainState, RunnerState]:
         optax.clip_by_global_norm(cfg.train.max_grad_norm), optax.adam(cfg.train.lr)
     )
     train_state = TrainState.create(apply_fn=model.apply, params=params, tx=optimizer)
-    return train_state, RunnerState(state, obs, carry, jnp.ones_like(obs.alive))
+    runner = RunnerState(
+        state,
+        obs,
+        carry,
+        jnp.ones_like(obs.alive),
+        socios.draw_assignment(assign_key, cfg, cfg.train.n_envs),
+        socios.initial_auxiliar(cfg.train.n_envs, cfg.env.n_civs),
+        jnp.zeros_like(carry),
+    )
+    return train_state, runner
 
 
 def make_rollout(env: DarkForestEnv, cfg: Config):
-    """Construye rollouts recurrentes; este primer entrenador exige rho=0."""
-    if cfg.train.self_play.rho != 0:
-        raise NotImplementedError(
-            "El autojuego con snapshots está pendiente; usa train.self_play.rho=0"
-        )
+    """Construye rollouts recurrentes con socios opcionales (snapshots y estrategias fijas)."""
+    play = cfg.train.self_play
+    with_partners = play.rho > 0
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
 
     def rollout(key, params, pop_params, assignment, env_state):
         """Conserva memoria entre fragmentos y reinicia únicamente episodios terminados."""
-        if pop_params is not None:
-            raise NotImplementedError("Las poblaciones congeladas se integrarán después")
+        if with_partners and pop_params is None and play.w_snapshot > 0:
+            raise ValueError("Con w_snapshot > 0 el rollout necesita los pesos de un snapshot")
         initial_carry = env_state.carry
+        env_state = env_state.replace(assign=assignment)
 
         def transition(runner, random_key):
             """Recoge una transición y su valor antes del reinicio automático."""
             action_key, step_key, reset_key = jax.random.split(random_key, 3)
+            pop_key, draw_key = jax.random.split(jax.random.fold_in(random_key, 7))
             resets = runner.reset | ~runner.obs.alive
             memory = jnp.where(resets[..., None], 0, runner.carry)
-            carry, logits, values = model.apply(
-                params, memory, flatten_obs(runner.obs), runner.obs.agent_id
-            )
+            flat = flatten_obs(runner.obs)
+            carry, logits, values = model.apply(params, memory, flat, runner.obs.agent_id)
             actions = jax.random.categorical(action_key, logits)
             log_prob = jnp.take_along_axis(jax.nn.log_softmax(logits), actions[..., None], axis=-1)[
                 ..., 0
             ]
+            pop_carry = runner.pop_carry
+            if with_partners:
+                snapshot = None
+                if pop_params is not None:
+                    pop_memory = jnp.where(resets[..., None], 0, runner.pop_carry)
+                    pop_carry, pop_logits, _ = model.apply(
+                        pop_params, pop_memory, flat, runner.obs.agent_id
+                    )
+                    snapshot = jax.random.categorical(pop_key, pop_logits)
+                fixed = socios.fixed_actions(cfg, runner.state, runner.obs, runner.aux)
+                actions = socios.choose_actions(runner.assign, actions, snapshot, fixed)
             out = jax.vmap(env.step)(
                 jax.random.split(step_key, cfg.train.n_envs), runner.state, actions
             )
+            aux = runner.aux
+            if with_partners:
+                aux = socios.update_auxiliar(cfg, aux, runner.state, out.state, actions)
             carry = jnp.where(out.state.alive[..., None], carry, 0)
             _, _, next_values = model.apply(params, carry, flatten_obs(out.obs), out.obs.agent_id)
             finished = jnp.all(out.done, axis=-1)
@@ -93,6 +121,16 @@ def make_rollout(env: DarkForestEnv, cfg: Config):
                 jax.random.split(reset_key, cfg.train.n_envs), out.obs, out.state, finished
             )
             carry = jnp.where(finished[..., None, None], 0, carry)
+            assign = runner.assign
+            if with_partners:
+                fresh = socios.draw_assignment(draw_key, cfg, cfg.train.n_envs)
+                assign = jnp.where(finished[:, None], fresh, assign)
+                keep = ~finished
+                aux = socios.Auxiliar(
+                    jnp.where(keep, aux.first, 0),
+                    jnp.where(keep, aux.second, 0),
+                    aux.fired & keep[:, None],
+                )
             data = {
                 "obs": runner.obs,
                 "resets": resets,
@@ -103,10 +141,16 @@ def make_rollout(env: DarkForestEnv, cfg: Config):
                 "rewards": out.reward,
                 "dones": out.done,
                 "terminated": ~out.state.alive,
-                "valid": runner.obs.alive & (assignment == -1),
+                "valid": runner.obs.alive & (runner.assign == socios.APRENDIZ),
             }
             return RunnerState(
-                state, obs, carry, jnp.broadcast_to(finished[:, None], obs.alive.shape)
+                state,
+                obs,
+                carry,
+                jnp.broadcast_to(finished[:, None], obs.alive.shape),
+                assign,
+                aux,
+                pop_carry,
             ), data
 
         runner, batch = jax.lax.scan(
@@ -145,7 +189,7 @@ def compute_gae(
     return jax.lax.scan(accumulate, jnp.zeros_like(last_value), (deltas, dones), reverse=True)[1]
 
 
-def ppo_loss(params, batch, cfg: Config):
+def ppo_loss(params, batch, cfg: Config, ent_coef=None):
     """Recalcula secuencias GRU y aplica PPO solo a agentes vivos de la política actual."""
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
 
@@ -169,7 +213,8 @@ def ppo_loss(params, batch, cfg: Config):
     actor = -(mask * surrogate).sum() / count
     critic = (mask * (values - batch["returns"]) ** 2).sum() / count
     entropy = -(mask * (jnp.exp(log_probs) * log_probs).sum(axis=-1)).sum() / count
-    loss = actor + cfg.train.vf_coef * critic - cfg.train.ent_coef * entropy
+    ent_coef = cfg.train.ent_coef if ent_coef is None else ent_coef
+    loss = actor + cfg.train.vf_coef * critic - ent_coef * entropy
     return loss, {"loss": loss, "actor_loss": actor, "value_loss": critic, "entropy": entropy}
 
 
@@ -191,12 +236,25 @@ def make_update(cfg: Config):
     """Compila una actualización con gradientes recurrentes y recorte de norma."""
 
     @jax.jit
-    def update(state, batch):
+    def update(state, batch, ent_coef=cfg.train.ent_coef):
         """Actualiza parámetros y devuelve diagnósticos del gradiente."""
-        (_, metrics), grads = jax.value_and_grad(ppo_loss, has_aux=True)(state.params, batch, cfg)
+        (_, metrics), grads = jax.value_and_grad(ppo_loss, has_aux=True)(
+            state.params, batch, cfg, ent_coef
+        )
         return state.apply_gradients(grads=grads), {**metrics, "grad_norm": optax.tree.norm(grads)}
 
     return update
+
+
+def take_envs(batch: dict, index: jax.Array) -> dict:
+    """Selecciona entornos completos para que cada minibatch conserve sus secuencias GRU."""
+    envs_last = {name: value[index] for name, value in batch.items() if name == "initial_carry"}
+    rest = {
+        name: jax.tree.map(lambda x: x[:, index], value)
+        for name, value in batch.items()
+        if name != "initial_carry"
+    }
+    return {**rest, **envs_last}
 
 
 def run_iteration(
@@ -207,13 +265,21 @@ def run_iteration(
     state: TrainState,
     runner: RunnerState,
     key: jax.Array,
-    assignment: jax.Array,
+    assignment: jax.Array | None,
+    progress: float = 0.0,
+    pop_params=None,
 ) -> tuple[TrainState, RunnerState, jax.Array, dict[str, jax.Array]]:
-    """Una iteración: recolecta, calcula ventajas, actualiza y devuelve las métricas."""
+    """Una iteración: recolecta, calcula ventajas, actualiza y devuelve las métricas.
+
+    progress en [0, 1] indica el avance del entrenamiento y solo sirve para decaer la entropía.
+    pop_params son los pesos del snapshot que juega de socio (solo con self_play.rho > 0) y
+    assignment None conserva las asignaciones que ya lleva el runner.
+    """
     key, rollout_key = jax.random.split(key)
-    runner, batch = rollout(rollout_key, state.params, None, assignment, runner)
+    assignment = runner.assign if assignment is None else assignment
+    runner, batch = rollout(rollout_key, state.params, pop_params, assignment, runner)
     advantages = compute_gae(
-        batch["rewards"],
+        batch["rewards"] * cfg.train.reward_scale,
         batch["values"],
         batch["dones"],
         batch["next_values"][-1],
@@ -228,8 +294,19 @@ def run_iteration(
     variance = (((advantages - mean) ** 2) * mask).sum() / count
     batch["returns"] = jax.lax.stop_gradient(advantages + batch["values"])
     batch["advantages"] = jax.lax.stop_gradient((advantages - mean) / jnp.sqrt(variance + 1e-8))
+    final = cfg.train.ent_coef_final
+    ent_coef = cfg.train.ent_coef
+    if final is not None:
+        ent_coef = cfg.train.ent_coef + (final - cfg.train.ent_coef) * min(max(progress, 0.0), 1.0)
+    parts = cfg.train.num_minibatches
     for _ in range(cfg.train.update_epochs):
-        state, metrics = update(state, batch)
+        if parts == 1:
+            state, metrics = update(state, batch, ent_coef)
+            continue
+        key, shuffle_key = jax.random.split(key)
+        order = jax.random.permutation(shuffle_key, cfg.train.n_envs).reshape(parts, -1)
+        for index in order:
+            state, metrics = update(state, take_envs(batch, index), ent_coef)
     return state, runner, key, {**metrics, **rollout_metrics(batch, env)}
 
 
@@ -243,6 +320,14 @@ def save_checkpoint(
     temporary = folder / "ultimo.msgpack.tmp"
     temporary.write_bytes(serialization.to_bytes(payload))
     os.replace(temporary, folder / "ultimo.msgpack")
+
+
+def save_snapshot(directory: Path, params, iteration: int) -> None:
+    """Guarda solo los pesos de una iteración con el formato que lee checkpoint_policy."""
+    folder = directory / "snapshots"
+    folder.mkdir(exist_ok=True)
+    payload = {"train_state": {"params": params}, "iteration": iteration}
+    (folder / f"iter_{iteration:05d}.msgpack").write_bytes(serialization.to_bytes(payload))
 
 
 def train(cfg: Config, name: str, *, resume: Path | None = None) -> TrainState:
@@ -260,7 +345,18 @@ def train(cfg: Config, name: str, *, resume: Path | None = None) -> TrainState:
     state, runner = initialize(cfg, init_key)
     initial_params = state.params
     model = ActorCriticGRU(cfg.env.n_discrete, cfg.train.gru_hidden)
-    assignment = jnp.full((cfg.train.n_envs, cfg.env.n_civs), -1)
+    if cfg.train.init_from is not None:
+        loaded = serialization.msgpack_restore(Path(cfg.train.init_from).read_bytes())
+        state = state.replace(
+            params=serialization.from_state_dict(state.params, loaded["train_state"]["params"])
+        )
+        initial_params = state.params
+    population = Population(cfg.train.self_play.max_snapshots)
+    if cfg.train.partner_checkpoint is not None:
+        frozen = serialization.msgpack_restore(Path(cfg.train.partner_checkpoint).read_bytes())
+        population.add(serialization.from_state_dict(state.params, frozen["train_state"]["params"]))
+    else:
+        population.add(state.params)
     update = make_update(cfg)
     total = cfg.train.total_steps // chunk
     start = 0
@@ -282,13 +378,25 @@ def train(cfg: Config, name: str, *, resume: Path | None = None) -> TrainState:
         if resume is None:
             save_episode(logger.dir, before, cfg=cfg, policy_name="red_inicial", episode_id=1)
         for index in range(start, total):
-            state, runner, key, metrics = run_iteration(
-                cfg, env, rollout, update, state, runner, key, assignment
+            partner = (
+                population.sample(jax.random.fold_in(key, index))
+                if cfg.train.self_play.rho
+                else None
             )
+            state, runner, key, metrics = run_iteration(
+                cfg, env, rollout, update, state, runner, key, None, index / total, partner
+            )
+            if (
+                cfg.train.partner_checkpoint is None
+                and (index + 1) % cfg.train.self_play.snapshot_every == 0
+            ):
+                population.add(state.params)
             metrics = {name: float(value) for name, value in metrics.items()}
             if not all(np.isfinite(value) for value in metrics.values()):
                 raise FloatingPointError("El entrenamiento produjo métricas no finitas")
             logger.log((index + 1) * chunk, metrics)
+            if cfg.train.save_snapshots and (index + 1) % cfg.train.self_play.snapshot_every == 0:
+                save_snapshot(logger.dir, state.params, index + 1)
             every = cfg.train.checkpoint_every
             if every and (index + 1) % every == 0 and index + 1 < total:
                 save_checkpoint(logger.dir, state, runner, key, index + 1)

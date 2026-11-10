@@ -1,0 +1,200 @@
+<!-- @dsCard group="Narrativa" height=900 subtitle="Ocho pieles por estrategia, con insignia, y seis estados" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--surface); color: var(--ink); font: 400 15px/22px var(--font-sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+h2 { margin: 0 0 var(--space-2); font: 600 12px/16px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h2:not(:first-child) { margin-top: var(--space-5); }
+p.ob-help { margin: 0 0 var(--space-3); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-astro-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.ob-astro { display: grid; justify-items: center; gap: var(--space-1); margin: 0; padding: var(--space-3) var(--space-2); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius-lg); text-align: center; }
+.ob-astro svg { display: block; }
+.ob-astro__nombre { font-weight: 600; font-size: 14px; line-height: 20px; color: var(--ink); }
+.ob-astro__insignia { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-astro__estado { font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-astro__estado strong { display: block; font-size: 14px; line-height: 20px; color: var(--ink); }
+/* Arte de las pieles: los colores del traje, acento y visor llegan por variables --suit, --acc y --visor. */
+.s { fill: var(--suit); } .a { fill: var(--acc); } .v { fill: var(--visor); }
+.o { stroke: var(--line-strong); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.n { fill: none; }
+.g { fill: none; stroke: #14182a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ref { fill: none; stroke: #14182a; stroke-width: 2.5; stroke-linecap: round; }
+.grieta { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.burbuja { fill: var(--refuge); fill-opacity: 0.16; stroke: var(--refuge); stroke-width: 2; stroke-dasharray: 5 4; }
+.pulso { fill: none; stroke: var(--share); stroke-width: 2; stroke-linecap: round; }
+.pulso-punto { fill: var(--share); stroke: var(--line-strong); stroke-width: 1.5; }
+.sonda { fill: var(--danger); stroke: var(--line-strong); stroke-width: 1.5; stroke-linejoin: round; }
+</style></head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Insignias (24x24) -->
+    <symbol id="i-ola" viewBox="0 0 24 24"><path class="g" d="M3 10c3-4 5-4 9 0s6 4 9 0M3 16c3-4 5-4 9 0s6 4 9 0"/></symbol>
+    <symbol id="i-hoja" viewBox="0 0 24 24"><path class="g" d="M5 19C5 9 11 5 19 5c0 8-4 14-14 14zM5 19L14 10"/></symbol>
+    <symbol id="i-cristal" viewBox="0 0 24 24"><path class="g" d="M12 3l7 7-7 11-7-11zM5 10h14"/></symbol>
+    <symbol id="i-espejo" viewBox="0 0 24 24"><ellipse class="g" cx="12" cy="10" rx="6" ry="7"/><path class="g" d="M12 17v4M9 21h6M9 8l3-3"/></symbol>
+    <symbol id="i-duna" viewBox="0 0 24 24"><path class="g" d="M3 17c3-8 6-8 9-2 2-4 5-4 9 2M3 21h18"/></symbol>
+    <symbol id="i-llama" viewBox="0 0 24 24"><path class="g" d="M12 3c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-7 1 2 2 2 3-5z"/></symbol>
+    <symbol id="i-nube" viewBox="0 0 24 24"><path class="g" d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 10 1 3.5 3.5 0 0 1 0 7z"/></symbol>
+    <symbol id="i-nodos" viewBox="0 0 24 24"><path class="g" d="M6 6L18 8 10 18zM6 6l4 12"/><circle class="g" cx="6" cy="6" r="2"/><circle class="g" cx="18" cy="8" r="2"/><circle class="g" cx="10" cy="18" r="2"/></symbol>
+
+    <!-- Cuerpos (96x120): silueta distinta por estilo -->
+    <symbol id="b-coop" viewBox="0 0 96 120">
+      <rect class="a o" x="25" y="46" width="46" height="38" rx="14"/>
+      <rect class="s o" x="35" y="82" width="11" height="30" rx="5.5"/><rect class="s o" x="50" y="82" width="11" height="30" rx="5.5"/>
+      <ellipse class="s o" cx="48" cy="65" rx="20" ry="22"/>
+      <ellipse class="s o" cx="20" cy="60" rx="6" ry="14" transform="rotate(28 20 60)"/>
+      <ellipse class="s o" cx="76" cy="60" rx="6" ry="14" transform="rotate(-28 76 60)"/>
+      <circle class="s o" cx="48" cy="32" r="18"/><ellipse class="v o" cx="48" cy="33" rx="12" ry="9"/>
+      <circle class="a o" cx="48" cy="66" r="7"/><use href="#i-ola" x="42" y="60" width="12" height="12"/>
+    </symbol>
+    <symbol id="b-reci" viewBox="0 0 96 120">
+      <rect class="a o" x="27" y="48" width="42" height="36" rx="5"/>
+      <rect class="s o" x="34" y="82" width="11" height="30" rx="4"/><rect class="s o" x="51" y="82" width="11" height="30" rx="4"/>
+      <rect class="s o" x="14" y="34" width="10" height="30" rx="5" transform="rotate(-18 19 49)"/>
+      <rect class="s o" x="72" y="52" width="10" height="30" rx="5" transform="rotate(12 77 67)"/>
+      <rect class="s o" x="30" y="46" width="36" height="40" rx="8"/>
+      <rect class="s o" x="31" y="13" width="34" height="33" rx="12"/><rect class="v o" x="37" y="22" width="22" height="15" rx="6"/>
+      <circle class="a o" cx="48" cy="66" r="7"/><use href="#i-hoja" x="42" y="60" width="12" height="12"/>
+    </symbol>
+    <symbol id="b-prud" viewBox="0 0 96 120">
+      <rect class="a o" x="30" y="46" width="36" height="30" rx="6"/>
+      <rect class="s o" x="34" y="84" width="12" height="26" rx="6"/><rect class="s o" x="50" y="84" width="12" height="26" rx="6"/>
+      <path class="s o" d="M25 86L31 48Q48 42 65 48L71 86Q48 92 25 86Z"/>
+      <path class="a o" d="M31 48Q48 42 65 48L63 56Q48 51 33 56Z"/>
+      <rect class="s o" x="28" y="62" width="40" height="10" rx="5" transform="rotate(-10 48 67)"/>
+      <rect class="s o" x="28" y="62" width="40" height="10" rx="5" transform="rotate(10 48 67)"/>
+      <ellipse class="s o" cx="48" cy="31" rx="22" ry="18"/><rect class="v o" x="36" y="29" width="24" height="9" rx="4.5"/>
+      <circle class="a o" cx="48" cy="80" r="6"/><use href="#i-cristal" x="43" y="75" width="10" height="10"/>
+    </symbol>
+    <symbol id="b-ment" viewBox="0 0 96 120">
+      <path class="a o" d="M34 48L48 40L62 48L58 80L38 80Z"/>
+      <rect class="s o" x="38" y="84" width="8" height="28" rx="4"/><rect class="s o" x="50" y="84" width="8" height="28" rx="4"/>
+      <rect class="s o" x="26" y="52" width="7" height="30" rx="3.5" transform="rotate(8 30 67)"/>
+      <ellipse class="s o" cx="48" cy="64" rx="14" ry="24"/>
+      <rect class="s o" x="60" y="44" width="7" height="32" rx="3.5" transform="rotate(-50 63 60)"/>
+      <polygon class="s o" points="48,8 68,29 48,50 28,29"/>
+      <polygon class="v o" points="48,17 59,29 48,41 37,29"/><polygon class="a" points="48,17 59,29 48,41"/>
+      <circle class="a o" cx="48" cy="66" r="6"/><use href="#i-espejo" x="43" y="61" width="10" height="10"/>
+    </symbol>
+    <symbol id="b-sol" viewBox="0 0 96 120">
+      <g transform="translate(7.2 17.1) scale(0.85)">
+        <ellipse class="a o" cx="48" cy="60" rx="20" ry="16"/>
+        <rect class="s o" x="37" y="84" width="9" height="28" rx="4.5"/><rect class="s o" x="50" y="84" width="9" height="28" rx="4.5"/>
+        <rect class="s o" x="24" y="52" width="8" height="32" rx="4"/><rect class="s o" x="64" y="52" width="8" height="32" rx="4"/>
+        <rect class="s o" x="34" y="46" width="28" height="42" rx="12"/>
+        <circle class="s o" cx="48" cy="30" r="16"/><ellipse class="v o" cx="48" cy="31" rx="10" ry="8"/>
+        <ellipse class="a o" cx="48" cy="17" rx="24" ry="4.5"/>
+        <path class="n o" d="M68 84L74 90"/><rect class="a o" x="70" y="90" width="9" height="12" rx="2"/>
+        <circle class="a o" cx="48" cy="68" r="6"/><use href="#i-duna" x="43" y="63" width="10" height="10"/>
+      </g>
+    </symbol>
+    <symbol id="b-bel" viewBox="0 0 96 120">
+      <rect class="a o" x="22" y="36" width="8" height="30" rx="2"/><rect class="a o" x="66" y="36" width="8" height="30" rx="2"/>
+      <rect class="s o" x="33" y="84" width="13" height="28" rx="3"/><rect class="s o" x="50" y="84" width="13" height="28" rx="3"/>
+      <rect class="s o" x="12" y="56" width="11" height="26" rx="3"/><rect class="s o" x="73" y="56" width="11" height="26" rx="3"/>
+      <polygon class="s o" points="22,50 74,50 66,88 30,88"/>
+      <polygon class="a o" points="18,46 38,46 36,58 20,58"/><polygon class="a o" points="78,46 58,46 60,58 76,58"/>
+      <polygon class="a o" points="42,18 48,6 54,18"/>
+      <polygon class="s o" points="34,18 62,18 70,30 62,46 34,46 26,30"/>
+      <polygon class="v o" points="33,27 63,27 58,38 38,38"/>
+      <circle class="a o" cx="48" cy="68" r="7"/><use href="#i-llama" x="42" y="62" width="12" height="12"/>
+    </symbol>
+    <symbol id="b-call" viewBox="0 0 96 120">
+      <path class="s o" d="M48 12C66 12 70 28 68 46L74 112H22L28 46C26 28 30 12 48 12Z"/>
+      <rect class="v o" x="35" y="26" width="26" height="7" rx="3.5"/>
+      <rect class="a o" x="36" y="62" width="24" height="6" rx="3"/>
+      <circle class="a o" cx="48" cy="90" r="7"/><use href="#i-nube" x="42" y="84" width="12" height="12"/>
+    </symbol>
+    <symbol id="b-neu" viewBox="0 0 96 120">
+      <path class="n o" d="M60 48L66 36"/><circle class="a o" cx="66" cy="34" r="3.5"/>
+      <rect class="a o" x="28" y="48" width="40" height="30" rx="10"/>
+      <rect class="s o" x="35" y="84" width="11" height="28" rx="5.5"/><rect class="s o" x="50" y="84" width="11" height="28" rx="5.5"/>
+      <rect class="s o" x="17" y="50" width="8" height="28" rx="4"/><rect class="s o" x="71" y="50" width="8" height="28" rx="4"/>
+      <circle class="a o" cx="21" cy="80" r="4"/><circle class="a o" cx="75" cy="80" r="4"/>
+      <rect class="s o" x="30" y="46" width="36" height="42" rx="12"/>
+      <polygon class="s o" points="48,12 64,21 64,39 48,48 32,39 32,21"/>
+      <polygon class="v o" points="48,20 57,25 57,35 48,40 39,35 39,25"/>
+      <circle class="a o" cx="48" cy="68" r="7"/><use href="#i-nodos" x="42" y="62" width="12" height="12"/>
+    </symbol>
+
+    <!-- Capas de estado -->
+    <symbol id="e-refugio" viewBox="-4 -14 104 136" overflow="visible"><ellipse class="burbuja" cx="48" cy="62" rx="45" ry="56"/></symbol>
+    <symbol id="e-comparte" viewBox="-4 -14 104 136" overflow="visible">
+      <path class="pulso" d="M48 14V8"/><circle class="pulso-punto" cx="48" cy="6" r="3"/>
+      <path class="pulso" d="M42 6A6 6 0 0 1 54 6M37 6A11 11 0 0 1 59 6"/>
+    </symbol>
+    <symbol id="e-miente" viewBox="-4 -14 104 136" overflow="visible"><path class="ref" d="M40 39L51 26M46 41L58 28"/></symbol>
+    <symbol id="e-ataca" viewBox="-4 -14 104 136" overflow="visible">
+      <rect class="s o" x="64" y="54" width="22" height="9" rx="3" transform="rotate(-8 68 58)"/>
+      <rect class="a o" x="82" y="50" width="10" height="9" rx="2"/><polygon class="sonda" points="92,50 100,54.5 92,59"/>
+    </symbol>
+  </defs>
+</svg>
+
+<h2>Las ocho pieles</h2>
+<p class="ob-help">La silueta cambia con la estrategia; el color del traje, el acento y el visor refuerzan, no sustituyen. Cada piel lleva su insignia en el pecho y su nombre debajo.</p>
+<ul class="ob-astro-rejilla">
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a1"><title id="a1">Astronauta cooperadora: casco redondo, brazos abiertos e insignia de ola</title><use href="#b-coop" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Cooperadora</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-ola" x="4" y="4" width="16" height="16"/></svg>Ola</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#e6efe2;--acc:#3d9a5b;--visor:#a6e8b4">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a2"><title id="a2">Astronauta recíproca: casco cuadrado, un brazo arriba y otro abajo, insignia de hoja</title><use href="#b-reci" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Recíproca</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-hoja" x="4" y="4" width="16" height="16"/></svg>Hoja</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#f2f6fb;--acc:#5a7fc4;--visor:#cfe3ff">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a3"><title id="a3">Astronauta prudente: capucha ancha, brazos cruzados e insignia de cristal</title><use href="#b-prud" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Prudente</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-cristal" x="4" y="4" width="16" height="16"/></svg>Cristal</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#3b2a4d;--acc:#d98bb8;--visor:#f0b6dd">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a4"><title id="a4">Astronauta mentirosa: casco en rombo con visor mitad espejo, un brazo a la espalda, insignia de espejo</title><use href="#b-ment" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Mentirosa</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-espejo" x="4" y="4" width="16" height="16"/></svg>Espejo</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#e7d7b8;--acc:#c2813a;--visor:#ffd9a0">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a5"><title id="a5">Astronauta solitaria: figura pequeña con sombrero de ala y farol, insignia de duna</title><use href="#b-sol" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Solitaria</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-duna" x="4" y="4" width="16" height="16"/></svg>Duna</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#4a2a26;--acc:#ff7a45;--visor:#ffb48a">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a6"><title id="a6">Astronauta belicosa: casco angular con cresta, hombreras y dos cañones, insignia de llama</title><use href="#b-bel" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Belicosa</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-llama" x="4" y="4" width="16" height="16"/></svg>Llama</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#c9ccd6;--acc:#8a90a8;--visor:#dfe3ee">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a7"><title id="a7">Astronauta callada: figura alta en forma de cono, sin brazos y con visor en ranura, insignia de nube</title><use href="#b-call" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Callada</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-nube" x="4" y="4" width="16" height="16"/></svg>Nube</span></figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#dff6f0;--acc:#00a58e;--visor:#9ff4e2">
+    <svg viewBox="0 0 96 120" width="96" height="120" role="img" aria-labelledby="a8"><title id="a8">Astronauta neuronal: casco hexagonal, antena con nodo y brazos con nodos, insignia de nodos</title><use href="#b-neu" width="96" height="120"/></svg>
+    <figcaption><span class="ob-astro__nombre">Neuronal</span>
+    <span class="ob-astro__insignia"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="a o" cx="12" cy="12" r="11"/><use href="#i-nodos" x="4" y="4" width="16" height="16"/></svg>Nodos</span></figcaption></figure></li>
+</ul>
+
+<h2>Estados</h2>
+<p class="ob-help">Se muestran sobre la piel cooperadora. Cada estado cambia una forma además del color y lleva su palabra.</p>
+<ul class="ob-astro-rejilla">
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s1"><title id="s1">Astronauta viva: visor encendido</title><use href="#b-coop" width="96" height="120"/></svg>
+    <figcaption class="ob-astro__estado"><strong>Viva</strong>Visor encendido</figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s2"><title id="s2">Astronauta muerta: cuerpo inclinado a la deriva, visor apagado y agrietado</title>
+      <g transform="translate(6 -2) rotate(22 48 112)"><use href="#b-coop" width="96" height="120" style="--visor:var(--dead)"/><path class="grieta" d="M42 26L48 33L44 38L53 42M48 33L55 28"/></g></svg>
+    <figcaption class="ob-astro__estado"><strong>Muerta</strong>Visor apagado, a la deriva</figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s3"><title id="s3">Astronauta en refugio: burbuja de escudo discontinua</title><use href="#b-coop" width="96" height="120"/><use href="#e-refugio" width="104" height="136" x="-4" y="-14"/></svg>
+    <figcaption class="ob-astro__estado"><strong>Refugio</strong>Burbuja discontinua</figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s4"><title id="s4">Astronauta que comparte: pulso en la antena</title><use href="#b-coop" width="96" height="120"/><use href="#e-comparte" width="104" height="136" x="-4" y="-14"/></svg>
+    <figcaption class="ob-astro__estado"><strong>Comparte</strong>Pulso en la antena</figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s5"><title id="s5">Astronauta que miente: reflejo de espejo en el visor</title><use href="#b-coop" width="96" height="120"/><use href="#e-miente" width="104" height="136" x="-4" y="-14"/></svg>
+    <figcaption class="ob-astro__estado"><strong>Miente</strong>Reflejo en el visor</figcaption></figure></li>
+  <li><figure class="ob-astro" style="--suit:#eef3f8;--acc:#2f9bd6;--visor:#8fdcff">
+    <svg viewBox="-4 -14 104 136" width="104" height="136" role="img" aria-labelledby="s6"><title id="s6">Astronauta que ataca: brazo extendido con lanzasondas</title><use href="#b-coop" width="96" height="120"/><use href="#e-ataca" width="104" height="136" x="-4" y="-14"/></svg>
+    <figcaption class="ob-astro__estado"><strong>Ataca</strong>Brazo con lanzasondas</figcaption></figure></li>
+</ul>
+</body></html>

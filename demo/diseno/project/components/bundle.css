@@ -1,0 +1,80 @@
+/* Observatorio del Bosque Oscuro: estilos de los componentes. Solo variables de tokens.css. */
+.ob-root { font-family: var(--font-sans); font-size: 15px; line-height: 22px; color: var(--ink); }
+.ob-root *, .ob-root *::before, .ob-root *::after { box-sizing: border-box; }
+.ob-root :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Panel: el contenedor básico; separa con borde, no con sombra. */
+.ob-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4); }
+.ob-panel--float { box-shadow: var(--shadow-panel); }
+.ob-section { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: var(--space-5) 0 var(--space-2); }
+.ob-section:first-child { margin-top: 0; }
+.ob-help { font-size: 13px; line-height: 19px; color: var(--muted); }
+
+/* Campo: etiqueta arriba, valor a la derecha. */
+.ob-field { display: block; margin: var(--space-3) 0 0; }
+.ob-field__head { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 13px; line-height: 19px; margin-bottom: var(--space-1); }
+.ob-field__value { font-family: var(--font-mono); font-weight: 500; color: var(--sun); }
+
+/* Botón */
+.ob-btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 40px; padding: var(--space-2) var(--space-4); font: 600 14px/20px var(--font-sans); color: var(--ink); background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-md); cursor: pointer; }
+.ob-btn:hover { border-color: var(--ink); }
+.ob-btn--primary { background: var(--sun); color: var(--on-sun); border-color: var(--sun); }
+.ob-btn--primary:hover { box-shadow: var(--shadow-glow); border-color: var(--sun); }
+.ob-btn--ghost { background: transparent; }
+.ob-btn--block { width: 100%; }
+.ob-btn[disabled], .ob-btn[aria-busy="true"] { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+/* Selector nativo con caret propio */
+.ob-select { position: relative; }
+.ob-select select { appearance: none; width: 100%; min-height: 40px; padding: var(--space-2) 36px var(--space-2) var(--space-3); font: 400 14px/20px var(--font-sans); color: var(--ink); background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
+.ob-select::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+
+/* Control deslizante */
+.ob-range { appearance: none; width: 100%; height: 24px; background: transparent; margin: 0; }
+.ob-range::-webkit-slider-runnable-track { height: 4px; background: var(--line-strong); border-radius: var(--radius-pill); }
+.ob-range::-moz-range-track { height: 4px; background: var(--line-strong); border-radius: var(--radius-pill); }
+.ob-range::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: var(--sun); border: 2px solid var(--void); box-shadow: 0 0 0 1px var(--sun); }
+.ob-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--sun); border: 2px solid var(--void); box-shadow: 0 0 0 1px var(--sun); }
+
+/* Interruptor: la casilla real queda accesible y la pista la dibuja un hermano. */
+.ob-switch { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-2) 0; cursor: pointer; font-size: 14px; }
+.ob-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ob-switch__track { flex: none; position: relative; width: 40px; height: 22px; background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ob-switch__track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); }
+.ob-switch input:checked + .ob-switch__track { background: var(--sun); border-color: var(--sun); }
+.ob-switch input:checked + .ob-switch__track::after { left: 20px; background: var(--on-sun); }
+.ob-switch input:focus-visible + .ob-switch__track { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ob-switch input:disabled + .ob-switch__track { opacity: 0.5; }
+
+/* Tabla de civilizaciones */
+.ob-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ob-table th { text-align: left; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--line); }
+.ob-table td { padding: var(--space-2); border-bottom: 1px solid var(--line); }
+.ob-table td.num { font-family: var(--font-mono); font-weight: 500; text-align: right; }
+.ob-table tr[data-dead="true"] td { color: var(--muted); }
+.ob-civ { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+.ob-civ i { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--civ-1)); }
+.ob-civ[data-dead="true"] i { background: var(--dead); }
+
+/* Tarjeta de métrica */
+.ob-metric { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); }
+.ob-metric__label { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-metric__value { font-family: var(--font-mono); font-size: 28px; line-height: 32px; font-weight: 500; margin-top: var(--space-1); }
+.ob-metric__note { font-size: 13px; line-height: 19px; color: var(--muted); margin-top: var(--space-1); }
+.ob-metric--hl { border-color: var(--sun); box-shadow: var(--shadow-glow); }
+.ob-metric--hl .ob-metric__value { color: var(--sun); }
+
+/* Leyenda: cada marca lleva su palabra; el color solo no basta. */
+.ob-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-legend__item { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ob-legend__item i { display: inline-block; width: 18px; border-top: 2px solid var(--c); }
+.ob-legend__item i[data-shape="dot"] { width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--c); }
+
+/* Línea de tiempo de un episodio */
+.ob-timeline { display: grid; gap: var(--space-2); }
+.ob-timeline__track { position: relative; height: 24px; }
+.ob-timeline__track .ob-range { position: absolute; inset: 0; }
+.ob-timeline__marks { position: relative; height: 10px; }
+.ob-timeline__marks b { position: absolute; top: 0; width: 2px; height: 10px; border-radius: var(--radius-sm); background: var(--c); }
+.ob-timeline__read { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; line-height: 19px; color: var(--muted); }
+.ob-timeline__read strong { color: var(--ink); font-weight: 500; }

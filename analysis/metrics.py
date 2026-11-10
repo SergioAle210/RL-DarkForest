@@ -46,23 +46,68 @@ def preventive_attacks(traj: Trajectory) -> float:
 
 
 def anomaly_prediction_accuracy(traj: Trajectory) -> float:
-    """Refugios correctos / total de estallidos."""
-    raise NotImplementedError
+    """Refugios correctos por estallido: suma de aciertos sobre el número de estallidos."""
+    bursts = int(traj["info_bursts"].sum())
+    return float(traj["info_shelters_correct"].sum() / max(bursts, 1))
 
 
-def message_theta_mutual_info(traj: Trajectory) -> float:
-    """I(M; θ) estimada (p. ej. discretizando θ)."""
-    raise NotImplementedError
+def mutual_information(x: np.ndarray, y: np.ndarray) -> float:
+    """Información mutua en bits entre dos variables discretas, con corrección de Miller-Madow."""
+    x, y = np.asarray(x), np.asarray(y)
+    if x.size == 0:
+        return 0.0
+    _, xi = np.unique(x, return_inverse=True)
+    _, yi = np.unique(y, return_inverse=True)
+    joint = np.zeros((xi.max() + 1, yi.max() + 1))
+    np.add.at(joint, (xi, yi), 1)
+    n = joint.sum()
+    px, py, pxy = joint.sum(1) / n, joint.sum(0) / n, joint / n
+    nonzero = pxy > 0
+    plugin = float((pxy[nonzero] * np.log2(pxy[nonzero] / np.outer(px, py)[nonzero])).sum())
+    bias = (joint.shape[0] - 1) * (joint.shape[1] - 1) / (2 * n * np.log(2))
+    return max(plugin - bias, 0.0)
+
+
+def message_theta_mutual_info(trajs: list[Trajectory], n_symbols: int = 4, bins: int = 4) -> float:
+    """I(M; θ) en bits sobre varios episodios: símbolo transmitido contra el periodo de θ.
+
+    Cada transmisión aporta un par (símbolo, cuartil del periodo del episodio). Los compartir no
+    entran porque llevan una medición continua, no un símbolo. Con pocos mensajes la corrección
+    de sesgo lo deja en 0.
+    """
+    symbols, periods = [], []
+    for traj in trajs:
+        actions, alive = traj["actions"], traj["alive"][:-1]
+        sent = (actions >= 3) & (actions < 3 + n_symbols) & alive
+        count = int(sent.sum())
+        symbols += list(actions[sent] - 3)
+        periods += [float(traj["theta"][0][1])] * count
+    if not symbols:
+        return 0.0
+    edges = np.quantile(periods, np.linspace(0, 1, bins + 1)[1:-1])
+    return mutual_information(np.array(symbols), np.digitize(periods, edges))
 
 
 def classify_regime(traj: Trajectory) -> str:
-    """Asigna uno de REGIMES al episodio."""
-    raise NotImplementedError
+    """Etiqueta descriptiva por reglas: ataque, colapso, cooperación o silencio.
+
+    No es un régimen validado: son umbrales fijos (ver REGIMES) sobre tres cantidades. Sin
+    detección de comunidades, "coalicion" no se asigna aquí.
+    """
+    survival = float(traj["alive"][-1].mean())
+    if survival == 0:
+        return "colapso"
+    if preventive_attacks(traj) > 0:
+        return "ataque_preventivo"
+    talks = sum(transmissions_per_episode(traj).values())
+    if talks > 0 and survival >= 0.8:
+        return "cooperacion"
+    return "silencio_mutuo" if talks == 0 else "colapso"
 
 
 def channel_ablation_drop(baseline: Trajectory, ablated: Trajectory) -> float:
     """Caída de supervivencia al anular el canal o barajar mensajes."""
-    raise NotImplementedError
+    return float(baseline["alive"][-1].mean() - ablated["alive"][-1].mean())
 
 
 def summarize(traj: Trajectory) -> dict:

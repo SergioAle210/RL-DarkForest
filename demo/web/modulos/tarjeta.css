@@ -1,0 +1,60 @@
+/* Ficha de civilización y bitácora del observatorio. Solo variables de tokens.css. */
+
+/* Fichas de rasgo (las usa la ficha; el estado lleva palabra y forma, no solo color). */
+.ob-chip { display: inline-flex; align-items: baseline; gap: var(--space-1); padding: 2px var(--space-3); font-size: 12px; line-height: 16px; color: var(--ink); background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ob-chip__etiqueta { color: var(--muted); font-weight: 600; }
+.ob-chip__valor { font-weight: 500; }
+.ob-chip[data-estado]::before { content: ""; flex: none; align-self: center; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--ok); background: var(--ok); }
+.ob-chip[data-estado="muerta"]::before { border-color: var(--dead); background: transparent; }
+.ob-chip[data-estado="refugio"]::before { border-color: var(--refuge); border-radius: 2px 2px 50% 50%; background: var(--refuge); }
+
+/* Ficha */
+.ob-ficha { --c: var(--civ-1); display: grid; gap: var(--space-3); width: 100%; max-width: 360px; border-color: var(--c); color: var(--ink); font-family: var(--font-sans); }
+.ob-ficha *, .ob-ficha *::before, .ob-ficha *::after { box-sizing: border-box; }
+.ob-ficha :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ob-ficha[data-viva="false"] { border-style: dashed; }
+.ob-ficha__cabecera { display: grid; gap: var(--space-1); }
+.ob-ficha__civ { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-ficha__marca { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.ob-ficha[data-viva="false"] .ob-ficha__marca { background: transparent; border: 2px solid var(--dead); }
+.ob-ficha__nombre { margin: 0; font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+
+/* Escena: retícula de escaneo (decorativa) detrás del astronauta y el planeta. */
+.ob-ficha__escena { position: relative; display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; min-height: 168px; padding: var(--space-3); background: var(--void); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.ob-ficha__escaner { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--line-strong); opacity: 0.7; pointer-events: none; }
+.ob-ficha__astronauta, .ob-ficha__planeta { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; }
+.ob-ficha__planeta canvas { display: block; max-width: 100%; height: auto; border-radius: 50%; }
+.ob-ficha[data-viva="false"] .ob-ficha__planeta canvas { filter: grayscale(1); opacity: 0.6; }
+.ob-ficha[data-viva="false"] .ob-ficha__astronauta { opacity: 0.85; }
+.ob-ficha__reemplazo { display: inline-block; padding: var(--space-2); font-size: 13px; line-height: 19px; text-align: center; color: var(--muted); border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); }
+
+.ob-ficha__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+
+/* Datos */
+.ob-ficha__stat { display: grid; gap: var(--space-1); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.ob-ficha__etiqueta { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ob-ficha__valor { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); }
+.ob-ficha__valor--grande { font-size: 28px; line-height: 32px; color: var(--sun); }
+.ob-ficha__medidor { color: var(--ink); max-width: 100%; overflow: hidden; }
+.ob-ficha__medidor svg { max-width: 100%; height: auto; }
+.ob-ficha__grafica { max-width: 100%; height: auto; }
+.ob-ficha__base { stroke: var(--line-strong); stroke-width: 1; }
+.ob-ficha__accion { display: grid; gap: var(--space-1); margin: 0; padding-top: var(--space-3); border-top: 1px solid var(--line); }
+
+/* Bitácora: lista con desplazamiento; cada tipo tiene su forma de icono y su etiqueta. */
+.ob-bitacora { --b: var(--muted); max-height: 320px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); font-family: var(--font-sans); color: var(--ink); }
+.ob-bitacora:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ob-bitacora__lista { margin: 0; padding: 0; list-style: none; }
+.ob-bitacora__vacio { margin: 0; padding: var(--space-3) var(--space-4); }
+.ob-bitacora__item { display: grid; grid-template-columns: 16px 1fr; align-items: start; gap: var(--space-3); padding: var(--space-2) var(--space-3); font-size: 13px; line-height: 19px; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; color: var(--ink); }
+.ob-bitacora__item:last-child { border-bottom: 0; }
+.ob-bitacora__item[data-ultimo="true"] { background: var(--raised); border-left-color: var(--sun); font-weight: 600; }
+.ob-bitacora__icono { margin-top: 2px; color: var(--b); }
+.ob-bitacora__texto { min-width: 0; overflow-wrap: anywhere; }
+.ob-bitacora__item[data-tipo="estallido"] { --b: var(--burst); }
+.ob-bitacora__item[data-tipo="muerte"] { --b: var(--dead); }
+.ob-bitacora__item[data-tipo="ataque"] { --b: var(--danger); }
+.ob-bitacora__item[data-tipo="mensaje"] { --b: var(--share); }
+.ob-bitacora__item[data-tipo="mentira"] { --b: var(--lie); }
+.ob-bitacora__item[data-tipo="refugio"] { --b: var(--refuge); }
+.ob-bitacora__item[data-tipo="hito"] { --b: var(--sun); }

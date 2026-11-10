@@ -86,8 +86,11 @@ class EnvConfig:
     cost_tx: float = 0.02
     cost_atk: float = 0.10
     cost_ref: float = 0.02
-    costly_signals: bool = False
+    costly_signals: bool = False  # H3: el compartir verdadero cuesta cost_verify y lleva etiqueta
+    deception: bool = False  # H3: el último símbolo de transmitir fabrica una medición falsa
+    cost_verify: float = 0.06  # costo de un compartir verificado (con costly_signals)
     channel_enabled: bool = True  # False = ablación del canal
+    share_enabled: bool = True  # False = H3: sin señal verificable, solo charla barata (transmitir)
     shuffle_messages: bool = False  # ablación: barajar mensajes
     projectiles_cancel_on_death: bool = False  # True: un proyectil no impacta si su origen murió
     anomaly: AnomalyConfig = AnomalyConfig()
@@ -109,7 +112,7 @@ class EnvConfig:
             raise ValueError("env.n_civs: debe ser 2, 4, 6 u 8")
         for name in ("max_steps", "max_detections", "n_symbols"):
             _integer(f"env.{name}", getattr(self, name))
-        for name in ("growth", "cost_obs", "cost_tx", "cost_atk", "cost_ref"):
+        for name in ("growth", "cost_obs", "cost_tx", "cost_atk", "cost_ref", "cost_verify"):
             _number(f"env.{name}", getattr(self, name))
         _number("env.signal_speed", self.signal_speed, positive=True)
         _number("env.proj_speed", self.proj_speed, positive=True)
@@ -118,11 +121,17 @@ class EnvConfig:
         _number("env.p_kill", self.p_kill, maximum=1)
         for name in (
             "costly_signals",
+            "deception",
             "channel_enabled",
+            "share_enabled",
             "shuffle_messages",
             "projectiles_cancel_on_death",
         ):
             _require_type(f"env.{name}", getattr(self, name), bool)
+        if self.deception and self.n_symbols < 2:
+            raise ValueError(
+                "env.deception: necesita n_symbols >= 2 (el último símbolo es la mentira)"
+            )
         _require_type("env.anomaly", self.anomaly, AnomalyConfig)
         _number("env.initial_resources", self.initial_resources, positive=True)
         _number("env.collision_tolerance", self.collision_tolerance, positive=True)
@@ -171,13 +180,54 @@ class EnvConfig:
 
 @dc.dataclass(frozen=True)
 class SelfPlayConfig:
-    rho: float = 0.3
+    rho: float = 0.3  # fracción de episodios en que una civilización juega con un socio
     snapshot_every: int = 50
+    max_snapshots: int = 20  # tamaño de la población de snapshots pasados
+    # pesos relativos del socio: snapshot pasado o estrategia fija (solo con 2 civilizaciones)
+    w_snapshot: float = 1.0
+    w_coop_real: float = 0.0
+    w_solo: float = 0.0
+    w_ataque_solo: float = 0.0
+    w_ignorar: float = 0.0
+    w_prudente: float = 0.0  # coop_real que solo acepta mensajes verificados (costly_signals)
+    w_mentiroso: float = 0.0  # coop_real que fabrica sus mediciones (deception)
+    w_recip: float = 0.0  # coopera con quien le responde y deja de compartir con quien no
 
     def __post_init__(self) -> None:
         """Valida la mezcla de políticas y la frecuencia de guardado."""
         _number("self_play.rho", self.rho, maximum=1)
         _integer("self_play.snapshot_every", self.snapshot_every)
+        _integer("self_play.max_snapshots", self.max_snapshots)
+        for name in (
+            "w_snapshot",
+            "w_coop_real",
+            "w_solo",
+            "w_ataque_solo",
+            "w_ignorar",
+            "w_recip",
+            "w_prudente",
+            "w_mentiroso",
+        ):
+            _number(f"self_play.{name}", getattr(self, name))
+        if self.rho > 0 and self.partner_weights().sum() == 0:
+            raise ValueError("self_play: con rho > 0 algún peso de socio debe ser positivo")
+
+    def partner_weights(self):
+        """Pesos (snapshot, coop_real, solo, ataque_solo, ignorar, recip) como arreglo."""
+        import numpy as np
+
+        return np.array(
+            [
+                self.w_snapshot,
+                self.w_coop_real,
+                self.w_solo,
+                self.w_ataque_solo,
+                self.w_ignorar,
+                self.w_recip,
+                self.w_prudente,
+                self.w_mentiroso,
+            ]
+        )
 
 
 @dc.dataclass(frozen=True)
@@ -197,6 +247,12 @@ class TrainConfig:
     self_play: SelfPlayConfig = SelfPlayConfig()
     update_epochs: int = 4
     max_grad_norm: float = 0.5
+    num_minibatches: int = 1  # 1 = un paso por época sobre todo el lote (comportamiento anterior)
+    reward_scale: float = 1.0  # escala solo la señal del optimizador; no cambia el entorno
+    ent_coef_final: float | None = None  # si existe, la entropía decae linealmente hasta aquí
+    init_from: str | None = None  # checkpoint cuyos pesos inician el entrenamiento (currículo)
+    partner_checkpoint: str | None = None  # red congelada que será el único socio (explotador)
+    save_snapshots: bool = False  # guarda los pesos cada self_play.snapshot_every iteraciones
     checkpoint_every: int = 0  # iteraciones entre checkpoints reanudables; 0 = solo al final
 
     def __post_init__(self) -> None:
@@ -215,6 +271,16 @@ class TrainConfig:
         _integer("train.update_epochs", self.update_epochs)
         _integer("train.checkpoint_every", self.checkpoint_every, minimum=0)
         _number("train.max_grad_norm", self.max_grad_norm, positive=True)
+        _integer("train.num_minibatches", self.num_minibatches)
+        if self.n_envs % self.num_minibatches:
+            raise ValueError("train.num_minibatches: debe dividir a train.n_envs")
+        _number("train.reward_scale", self.reward_scale, positive=True)
+        if self.ent_coef_final is not None:
+            _number("train.ent_coef_final", self.ent_coef_final)
+        if self.init_from is not None:
+            _require_type("train.init_from", self.init_from, str)
+        if self.partner_checkpoint is not None:
+            _require_type("train.partner_checkpoint", self.partner_checkpoint, str)
 
 
 @dc.dataclass(frozen=True)

@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observatorio del Bosque Oscuro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="componentes.css">
+<link rel="stylesheet" href="modulos/tarjeta.css">
+<style>
+  body { margin: 0; background: var(--void); color: var(--ink); font-family: var(--font-sans); }
+  .app { max-width: 1520px; margin: 0 auto; padding: var(--space-5) var(--space-5) var(--space-7); }
+  .app-header { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+  .app-header h1 { margin: var(--space-1) 0 0; }
+  .app-header p { margin: var(--space-1) 0 0; color: var(--muted); max-width: 60ch; }
+  .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr) 340px; gap: var(--space-4); align-items: start; }
+  .col { display: grid; gap: var(--space-4); }
+  #arena { display: block; width: 100%; aspect-ratio: 1 / 1; max-height: 74vh; margin: 0 auto var(--space-3); background: var(--void); border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
+  #red { width: 100%; aspect-ratio: 1 / 1; display: block; background: var(--void); border: 1px solid var(--line); border-radius: var(--radius-md); }
+  #grafico { width: 100%; height: 150px; display: block; background: var(--void); border: 1px solid var(--line); border-radius: var(--radius-md); }
+  .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .metrics .wide { grid-column: 1 / -1; }
+  .row { display: flex; gap: var(--space-2); }
+  .row > * { flex: 1; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #estado { min-height: 2.6em; margin-top: var(--space-2); }
+  #estado[data-tipo="error"] { color: var(--danger); }
+  #estado[data-tipo="ok"] { color: var(--ok); }
+  input[type="number"] { width: 100%; min-height: 40px; padding: var(--space-2) var(--space-3); font: 400 14px/20px var(--font-mono); color: var(--ink); background: var(--raised); border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
+  [hidden] { display: none !important; }
+  .fichasel { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .fichasel .ob-btn { min-height: 32px; padding: var(--space-1) var(--space-3); }
+  .pieles { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .piel { display: grid; justify-items: center; gap: var(--space-1); font-size: 12px; color: var(--muted); max-width: 84px; text-align: center; }
+  .piel svg { height: 56px; width: auto; }
+  .bitacora-caja { max-height: 280px; overflow: auto; }
+  #arena3d { width: 100%; aspect-ratio: 1 / 1; max-height: 74vh; margin: 0 auto var(--space-3); background: var(--void); border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; position: relative; }
+  #arena3d canvas { display: block; width: 100% !important; height: 100% !important; }
+  #aviso3d { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-5); text-align: center; color: var(--muted); }
+  .ob-btn[aria-pressed="true"] { border-color: var(--sun); color: var(--sun); }
+  .vista-nota { margin: 0 0 var(--space-3); }
+  @media (max-width: 1240px) { .layout { grid-template-columns: 320px minmax(0, 1fr); } .col.side { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .layout, .col.side { grid-template-columns: 1fr; } .app { padding: var(--space-3); } }
+</style>
+</head>
+<body class="ob-root" data-theme="noche">
+<div class="app">
+<header class="app-header">
+  <div>
+    <p class="label" style="margin:0;color:var(--sun)">RL-DarkForest · demo</p>
+    <h1 class="title-xl">Observatorio del Bosque Oscuro</h1>
+    <p class="body">La arena es una galaxia: cada civilización es un sistema estelar con su planeta natal y un astronauta cuyo traje indica su estrategia. Elige un mundo y una política, simula un episodio y míralo turno a turno.</p>
+  </div>
+  <div class="row" style="flex:none">
+    <button class="ob-btn ob-btn--ghost" id="modo" type="button" aria-pressed="true" title="El modo narrativo añade planetas, astronautas y flotas; el científico deja solo las marcas abstractas">Modo: narrativo</button>
+    <button class="ob-btn ob-btn--ghost" id="tema" type="button" aria-pressed="false">Tema: noche</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ======== Controles ======== -->
+  <aside class="ob-panel" aria-label="Controles de la simulación">
+    <div id="modoCatalogo" hidden>
+      <h2 class="ob-section">Escenario</h2>
+      <label class="ob-field"><span class="ob-field__head"><span>Elige un escenario</span></span>
+        <span class="ob-select"><select id="escenario"></select></span></label>
+      <p class="ob-help" style="margin-top:var(--space-3)">Catálogo precalculado: no hay servidor. Para elegir mundo y políticas, ejecuta <code>python -m demo.servidor</code>.</p>
+    </div>
+
+    <div id="controlesVivos">
+      <h2 class="ob-section">Mundo</h2>
+      <label class="ob-field"><span class="ob-field__head"><span>Letalidad de la anomalía (λ)</span><span class="ob-field__value" id="v_lethality"></span></span>
+        <input class="ob-range" id="lethality" type="range" min="0" max="1" step="0.05"></label>
+      <label class="ob-field"><span class="ob-field__head"><span>Velocidad de la señal (c)</span></span>
+        <span class="ob-select"><select id="signal_speed"><option>0.05</option><option>0.1</option><option>0.22</option><option>0.5</option><option>1.0</option></select></span></label>
+      <label class="ob-field"><span class="ob-field__head"><span>Ruido de la medición</span><span class="ob-field__value" id="v_noise_std"></span></span>
+        <input class="ob-range" id="noise_std" type="range" min="0.05" max="0.8" step="0.05"></label>
+      <label class="ob-field"><span class="ob-field__head"><span>Costo del refugio</span><span class="ob-field__value" id="v_cost_ref"></span></span>
+        <input class="ob-range" id="cost_ref" type="range" min="0.02" max="0.5" step="0.01"></label>
+      <label class="ob-field"><span class="ob-field__head"><span>Probabilidad de que un ataque mate</span><span class="ob-field__value" id="v_p_kill"></span></span>
+        <input class="ob-range" id="p_kill" type="range" min="0.25" max="1" step="0.05"></label>
+      <label class="ob-field"><span class="ob-field__head"><span>Civilizaciones</span></span>
+        <span class="ob-select"><select id="n_civs"><option>2</option><option>4</option><option>6</option><option>8</option></select></span></label>
+      <label class="ob-switch"><input type="checkbox" role="switch" id="deception"><span class="ob-switch__track"></span><span>Engaño (se puede mentir)</span></label>
+      <label class="ob-switch"><input type="checkbox" role="switch" id="costly_signals"><span class="ob-switch__track"></span><span>Señales costosas (verificables)</span></label>
+
+      <h2 class="ob-section">Políticas</h2>
+      <label class="ob-field"><span class="ob-field__head"><span>Civilización 1</span></span><span class="ob-select"><select id="politicaA"></select></span></label>
+      <div id="cajaB"><label class="ob-field"><span class="ob-field__head"><span id="etiquetaB">Civilización 2</span></span><span class="ob-select"><select id="politicaB"></select></span></label></div>
+      <p class="ob-help" id="nota_n" hidden>Con más de 2 civilizaciones usa la red «n6»: rinde parecido de 4 a 8, mientras que las entrenadas con 2 pierden cerca de 40 %. Es una estimación, no una red entrenada para ese tamaño.</p>
+      <label class="ob-switch"><input type="checkbox" role="switch" id="voraz" checked><span class="ob-switch__track"></span><span>Red determinista (greedy)</span></label>
+
+      <h2 class="ob-section">Simulación</h2>
+      <label class="ob-field"><span class="ob-field__head"><span>Semilla</span></span><input id="seed" type="number" value="0" min="0"></label>
+      <label class="ob-switch"><input type="checkbox" role="switch" id="promediar"><span class="ob-switch__track"></span><span>Promediar 40 episodios (más lento)</span></label>
+      <button class="ob-btn ob-btn--primary ob-btn--block" id="simular" type="button" style="margin-top:var(--space-3)">Simular</button>
+    </div>
+    <div id="estado" class="ob-help" role="status" aria-live="polite">Cargando opciones…</div>
+  </aside>
+
+  <!-- ======== Arena ======== -->
+  <section class="col" aria-label="Arena del episodio">
+    <div class="ob-panel">
+      <div class="row" role="group" aria-label="Vista de la arena" style="margin-bottom:var(--space-3)">
+        <button class="ob-btn ob-btn--ghost" id="vistaPlano" type="button" aria-pressed="true">Plano</button>
+        <button class="ob-btn ob-btn--ghost" id="vista3d" type="button" aria-pressed="false">Toro 3D</button>
+      </div>
+      <canvas id="arena" width="900" height="900" role="img" aria-label="Arena toroidal con las civilizaciones" aria-describedby="lectura"></canvas>
+      <div id="arena3d" role="img" aria-label="Toro en 3D con las civilizaciones; se gira con el ratón" aria-describedby="lectura" hidden></div>
+      <p class="ob-help vista-nota" id="nota3d" hidden>Arrastra para girar, rueda para acercar. Cada civilización lleva su rótulo con los recursos, y cuanto mayor es el disco, más recursos tiene. Los anillos son las señales que se propagan. Las distancias son las del mapa y sus bordes se conectan: las copias tenues muestran cada sistema al otro lado del borde. En modo narrativo, las teclas 1 a 9 saltan a un planeta y 0 vuelve a la vista general.</p>
+      <p class="sr-only" id="lectura"></p>
+      <div class="ob-legend" id="leyenda" style="margin-bottom:var(--space-3)"></div>
+      <div class="pieles" id="pieles" aria-label="Pieles de astronauta presentes en este episodio"></div>
+      <div class="ob-timeline">
+        <div class="ob-timeline__track"><input class="ob-range" id="linea" type="range" min="0" max="200" value="0" aria-label="Turno"></div>
+        <div class="ob-timeline__marks" id="marcas" aria-hidden="true"></div>
+        <div class="ob-timeline__read"><span>turno <strong id="turno">0</strong>/<span id="total">200</span></span><span id="estallidos"></span></div>
+      </div>
+      <div class="row" style="margin-top:var(--space-3)">
+        <button class="ob-btn" id="atras" type="button" aria-label="Turno anterior">◀</button>
+        <button class="ob-btn" id="play" type="button">Pausa</button>
+        <button class="ob-btn" id="adelante" type="button" aria-label="Turno siguiente">▶</button>
+      </div>
+      <label class="ob-field"><span class="ob-field__head"><span>Velocidad</span><span class="ob-field__value" id="v_vel"></span></span>
+        <input class="ob-range" id="vel" type="range" min="2" max="60" step="1" value="15"></label>
+      <label class="ob-switch" style="margin-top:var(--space-3)"><input type="checkbox" role="switch" id="zona"><span class="ob-switch__track"></span><span>Mostrar la zona de la anomalía (las civilizaciones no la ven)</span></label>
+    </div>
+  </section>
+
+  <!-- ======== Lectura ======== -->
+  <section class="col side" aria-label="Resultados del episodio">
+    <div class="ob-panel">
+      <h2 class="ob-section" id="titulo">Episodio</h2>
+      <div class="metrics" id="metricas"></div>
+      <p class="ob-help" id="nota_episodio" style="margin-top:var(--space-3)"></p>
+    </div>
+    <div class="ob-panel" id="panelFicha">
+      <h2 class="ob-section">Ficha de civilización</h2>
+      <div class="fichasel" id="fichasel" role="group" aria-label="Elegir civilización"></div>
+      <div id="ficha"></div>
+      <p class="ob-help" style="margin-top:var(--space-2)">El aspecto del planeta, el nombre del sistema y la etapa de Kardashev son ilustrativos; los recursos, acciones y mensajes son datos del episodio.</p>
+    </div>
+    <div class="ob-panel" id="panelBitacora">
+      <h2 class="ob-section">Bitácora del observatorio</h2>
+      <div class="bitacora-caja" id="bitacora"></div>
+    </div>
+    <div class="ob-panel">
+      <h2 class="ob-section">Civilizaciones</h2>
+      <table class="ob-table" id="tabla"></table>
+    </div>
+    <div class="ob-panel">
+      <h2 class="ob-section">Recursos por turno</h2>
+      <canvas id="grafico" width="620" height="300" role="img" aria-label="Recursos de cada civilización a lo largo del episodio"></canvas>
+    </div>
+    <div class="ob-panel">
+      <h2 class="ob-section">Partitura de acciones</h2>
+      <canvas id="partitura" width="620" height="120" role="img" aria-label="Acciones de cada civilización turno a turno"></canvas>
+      <p class="ob-help" style="margin-top:var(--space-2)">Cada fila es una civilización y cada marca, una acción en ese turno. Las franjas rojizas son estallidos; la línea ámbar es el turno actual.</p>
+    </div>
+    <div class="ob-panel" id="panelRed">
+      <h2 class="ob-section">Red de comunicación</h2>
+      <canvas id="red" width="620" height="620" role="img" aria-label="Mensajes que se han recibido entre civilizaciones hasta el turno actual" aria-describedby="redTexto"></canvas>
+      <p class="ob-help" id="redTexto" style="margin-top:var(--space-2)"></p>
+    </div>
+  </section>
+</main>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="modulos/estilos.js"></script>
+<script src="modulos/galaxia.js"></script>
+<script src="modulos/nombres.js"></script>
+<script src="modulos/astronauta.js"></script>
+<script src="modulos/planetas.js"></script>
+<script src="modulos/kardashev.js"></script>
+<script src="modulos/efectos.js"></script>
+<script src="modulos/bitacora.js"></script>
+<script src="modulos/tarjeta.js"></script>
+<script>
+const ACCIONES = ["crecer","ocultarse","observar","transmitir","compartir","atacar","refugiarse"];
+const $ = id => document.getElementById(id);
+let ep = null, frame = 0, ultimo = 0, T = {};
+let jugando = !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+// ---------- tokens y tema ----------
+function cargarTokens() {
+  const estilo = getComputedStyle(document.body); T = {};
+  const nombres = ["void","surface","raised","line","line-strong","ink","muted","sun","on-sun","focus","share","symbol","lie","burst","refuge","danger","ok","dead",
+    "civ-1","civ-2","civ-3","civ-4","civ-5","civ-6","civ-7","civ-8"];
+  for (const n of nombres) T[n] = estilo.getPropertyValue("--" + n).trim();
+  T.sans = estilo.getPropertyValue("--font-sans").trim();
+}
+const civ = i => T["civ-" + (i % 8 + 1)];
+function rgba(hex, a) { const n = parseInt(hex.replace("#", ""), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+function aplicarTema(tema) {
+  document.body.dataset.theme = tema; cargarTokens();
+  $("tema").textContent = "Tema: " + tema; $("tema").setAttribute("aria-pressed", tema === "carta");
+  try { localStorage.setItem("tema", tema); } catch (e) {}
+}
+$("tema").onclick = () => aplicarTema(document.body.dataset.theme === "noche" ? "carta" : "noche");
+(function () {
+  let tema = "noche";
+  try { tema = localStorage.getItem("tema") || (matchMedia("(prefers-color-scheme: light)").matches ? "carta" : "noche"); } catch (e) {}
+  aplicarTema(tema);
+})();
+
+// ---------- opciones y simulación ----------
+async function cargar() {
+  try {
+    const o = await (await fetch("/api/opciones")).json();
+    const grupo = (titulo, lista) => `<optgroup label="${titulo}">` + lista.map(x => `<option value="${x.id}">${x.nombre}</option>`).join("") + "</optgroup>";
+    const opciones = grupo("Estrategias", o.fijas) + (o.redes.length ? grupo("Redes entrenadas", o.redes) : "");
+    $("politicaA").innerHTML = opciones; $("politicaB").innerHTML = opciones;
+    $("politicaA").value = "fijo:coop_real"; $("politicaB").value = "fijo:coop_real";
+    const m = o.mundo;
+    $("lethality").value = m.lethality; $("signal_speed").value = String(m.signal_speed);
+    $("noise_std").value = m.noise_std; $("cost_ref").value = m.cost_ref; $("p_kill").value = m.p_kill;
+    $("n_civs").value = m.n_civs; $("deception").checked = m.deception; $("costly_signals").checked = m.costly_signals;
+    actualizar(); estado("Listo. Elige el mundo y las políticas y pulsa Simular."); simular();
+  } catch (e) { await catalogo(); }
+}
+async function catalogo() {
+  try {
+    const lista = await (await fetch("catalogo/index.json")).json();
+    $("controlesVivos").hidden = true; $("modoCatalogo").hidden = false;
+    $("escenario").innerHTML = lista.map(x => `<option value="${x.archivo}">${x.nombre}</option>`).join("");
+    $("escenario").onchange = cargarEscenario; estado("Catálogo cargado.", "ok"); await cargarEscenario();
+  } catch (e) { estado("No hay servidor ni catálogo. Ejecuta python -m demo.servidor.", "error"); }
+}
+async function cargarEscenario() { ep = await (await fetch("catalogo/" + $("escenario").value)).json(); iniciar(); }
+function estado(texto, tipo = "") { $("estado").textContent = texto; $("estado").dataset.tipo = tipo; }
+function actualizar() {
+  for (const id of ["lethality","noise_std","cost_ref","p_kill"]) $("v_" + id).textContent = (+$(id).value).toFixed(2);
+  $("v_vel").textContent = $("vel").value + " turnos/s";
+  const n = +$("n_civs").value;
+  $("etiquetaB").textContent = n === 2 ? "Civilización 2" : "Resto de las civilizaciones";
+  $("nota_n").hidden = n === 2;
+}
+function mundo() {
+  return { lethality:+$("lethality").value, signal_speed:+$("signal_speed").value, noise_std:+$("noise_std").value, cost_ref:+$("cost_ref").value,
+    p_kill:+$("p_kill").value, n_civs:+$("n_civs").value, deception:$("deception").checked, costly_signals:$("costly_signals").checked };
+}
+async function simular() {
+  $("simular").disabled = true; $("simular").setAttribute("aria-busy", "true"); $("simular").textContent = "Simulando…";
+  estado("Simulando. Si el mundo es nuevo, el primer episodio tarda unos segundos más."); const t0 = performance.now();
+  try {
+    const r = await fetch("/api/simular", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mundo: mundo(), politicas: [$("politicaA").value, $("politicaB").value], seed: +$("seed").value,
+        voraz: $("voraz").checked, promediar: $("promediar").checked ? 40 : 0 }) });
+    const d = await r.json();
+    if (d.error) estado("No se pudo simular: " + d.error, "error");
+    else { ep = d; iniciar(); estado(`Listo en ${((performance.now() - t0) / 1000).toFixed(1)} s.`, "ok"); }
+  } catch (e) { estado("No hay conexión con el servidor. Ejecuta python -m demo.servidor.", "error"); }
+  $("simular").disabled = false; $("simular").removeAttribute("aria-busy"); $("simular").textContent = "Simular";
+}
+$("simular").onclick = simular;
+
+function iniciar() {
+  frame = 0; $("linea").max = ep.steps; $("total").textContent = ep.steps; $("play").textContent = jugando ? "Pausa" : "Reproducir";
+  $("marcas").innerHTML = ep.bursts.map(b => `<b style="--c:var(--burst);left:${(b / ep.steps * 100).toFixed(2)}%"></b>`).join("");
+  $("estallidos").textContent = `${ep.bursts.length} estallidos`;
+  const marca = (c, texto, punto) => `<span class="ob-legend__item"><i aria-hidden="true" ${punto ? 'data-shape="dot"' : ""} style="--c:var(--${c})"></i>${texto}</span>`;
+  $("leyenda").innerHTML = marca("share", "compartir") + marca("symbol", "símbolo") + (ep.deception ? marca("lie", "mentira") : "") + marca("burst", "estallido") + marca("refuge", "refugio", true)
+    + `<span class="ob-legend__item" id="leyPilar" ${V3.modo === "3d" ? "" : "hidden"}><i aria-hidden="true" data-shape="dot" style="--c:var(--ink)"></i>tamaño del disco y cifra: recursos</span>`;
+  metricas(); narrativoPrep(); aplicarModo();
+}
+
+// ---------- capa narrativa: planetas, astronautas, efectos ----------
+const NARR = { activo: true, sel: 0, efectos2d: null, efectos3d: null, eventos: [], ultimoT: -1, fondo: null };
+const ST = i => OB.estilos.deEstrategia((ep.politicas && ep.politicas[i]) || ep.policy);
+const SEMILLA = i => (ep.seed * 31 + i * 7 + 11) >>> 0;
+function estadoCiv(i, t) { return OB.tarjeta.estado(ep, i, t); }
+function narrativoPrep() {
+  NARR.eventos = OB.bitacora.eventos(ep); NARR.ultimoT = -1; NARR.efectos2d = OB.efectos.crear2d(); NARR.sel = Math.min(NARR.sel, ep.n - 1);
+  const botones = ['<button type="button" class="ob-btn ob-btn--ghost" data-civ="-1" title="Volver a la vista general (tecla 0)">General</button>'];
+  for (let i = 0; i < ep.n; i++) botones.push(`<button type="button" class="ob-btn ob-btn--ghost" data-civ="${i}" aria-pressed="${i === NARR.sel}">C${i + 1}</button>`);
+  $("fichasel").innerHTML = botones.join("");
+  $("fichasel").querySelectorAll("button").forEach(b => b.onclick = () => elegirCiv(+b.dataset.civ));
+  const vistos = {};
+  for (let i = 0; i < ep.n; i++) { const e = ST(i); (vistos[e.id] = vistos[e.id] || { e, civs: [] }).civs.push("C" + (i + 1)); }
+  $("pieles").innerHTML = Object.values(vistos).map(v => `<div class="piel">${OB.astronauta.svg(v.e, { viva: true, emite: 0, refugio: false, accion: "", recursos: 1, nivel: 0 }, 56)}<span>${v.e.nombre} (${v.civs.join(", ")})</span></div>`).join("");
+  reconstruirNarr3d();
+}
+function elegirCiv(i) { // i < 0: vista general
+  if (i >= 0) NARR.sel = i; NARR.ultimoT = -1;
+  $("fichasel").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.civ === (i >= 0 ? i : NARR.sel) && i >= 0));
+  if (V3.modo === "3d") enfocar(i);
+}
+document.addEventListener("keydown", e => {
+  if (!ep || !NARR.activo || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target.tagName || ""))) return;
+  if (e.key === "Escape" || e.key === "0") elegirCiv(-1);
+  else if (/^[1-9]$/.test(e.key) && +e.key <= ep.n) elegirCiv(+e.key - 1);
+});
+function narrativoPanel() {
+  const t = Math.min(Math.floor(frame), ep.steps);
+  if (t === NARR.ultimoT) return; NARR.ultimoT = t;
+  OB.tarjeta.render($("ficha"), ep, NARR.sel, t, T);
+  OB.bitacora.render($("bitacora"), NARR.eventos, t);
+}
+function aplicarModo() {
+  $("modo").textContent = "Modo: " + (NARR.activo ? "narrativo" : "científico"); $("modo").setAttribute("aria-pressed", NARR.activo);
+  for (const id of ["panelFicha", "panelBitacora", "pieles"]) $(id).hidden = !NARR.activo;
+  $("arena").style.borderColor = NARR.activo ? "transparent" : ""; $("arena3d").style.borderColor = NARR.activo ? "transparent" : "";
+  NARR.ultimoT = -1; if (ep) reconstruirNarr3d();
+  if (V3.listo) {
+    construirEstatico(); V3.foco = null; V3.warp = null; V3.camara.fov = 38; V3.camara.updateProjectionMatrix();
+    V3.hemi.intensity = NARR.activo ? 0.14 : 0.85; V3.sol.intensity = NARR.activo ? 0 : 0.7;
+    V3.controles.minDistance = NARR.activo ? 0.35 : 6; V3.controles.maxDistance = NARR.activo ? 24 : 22;
+    V3.camara.position.copy(NARR.activo ? VISTA_GENERAL.pos() : new THREE.Vector3(8.5, 7.5, 9.5)); V3.controles.target.set(0, 0, 0);
+  }
+}
+$("modo").onclick = () => { NARR.activo = !NARR.activo; aplicarModo(); try { localStorage.setItem("modo", NARR.activo ? "narrativo" : "cientifico"); } catch (e) {} };
+function fondoGalaxia(W) { // estrellas decorativas deterministas
+  if (!NARR.fondo || NARR.fondo.W !== W) {
+    let a = 12345; const r = () => (a = (a * 1664525 + 1013904223) >>> 0) / 4294967296;
+    NARR.fondo = { W, e: Array.from({ length: 140 }, () => [r() * W, r() * W, r() * 1.3 + 0.3, r() * 0.5 + 0.2]) };
+  }
+  for (const [x, y, rd, al] of NARR.fondo.e) { cx.fillStyle = rgba(T.ink, al * 0.5); cx.fillRect(x, y, rd, rd); }
+}
+
+// ---------- reproducción ----------
+const parar = () => { jugando = false; $("play").textContent = "Reproducir"; };
+$("play").onclick = () => { jugando = !jugando; $("play").textContent = jugando ? "Pausa" : "Reproducir"; };
+$("atras").onclick = () => { parar(); frame = Math.max(0, Math.floor(frame) - 1); };
+$("adelante").onclick = () => { parar(); if (ep) frame = Math.min(ep.steps, Math.floor(frame) + 1); };
+$("linea").oninput = () => { frame = +$("linea").value; parar(); };
+
+// ---------- arena ----------
+const cv = $("arena"), cx = cv.getContext("2d");
+const wrap = v => v - Math.floor(v);
+function anillo(c, r, color, ancho, S, m) {
+  const N = 96; let prev = null; cx.strokeStyle = color; cx.lineWidth = ancho; cx.beginPath();
+  for (let k = 0; k <= N; k++) {
+    const a = k / N * Math.PI * 2, x = wrap(c[0] + r * Math.cos(a)), y = wrap(c[1] + r * Math.sin(a));
+    const px = m + x * S, py = m + (1 - y) * S;
+    if (prev && Math.abs(x - prev[0]) < 0.5 && Math.abs(y - prev[1]) < 0.5) cx.lineTo(px, py); else cx.moveTo(px, py);
+    prev = [x, y];
+  }
+  cx.stroke();
+}
+function dibujarArena() {
+  const W = cv.width, m = 24, S = W - 2 * m; cx.clearRect(0, 0, W, W);
+  if (!ep) return;
+  if (NARR.activo) cx.drawImage(OB.galaxia.fondo(T), 0, 0, W, W);
+  const tf = Math.min(frame, ep.steps), t = Math.min(Math.floor(frame), ep.steps), P = x => [m + x[0] * S, m + (1 - x[1]) * S], zona = [ep.zone.x, ep.zone.y];
+  let flash = 0; for (const b of ep.bursts) if (b <= t && t - b < 4) flash = Math.max(flash, 1 - (t - b) / 4);
+  if (NARR.activo) { OB.galaxia.anomalia2d(cx, P, ep.zone, S, Math.max(flash, $("zona").checked ? 0.4 : 0), T); if ($("zona").checked) anillo(zona, ep.zone.r, rgba(T.burst, 0.35), 1, S, m); }
+  else {
+  if (flash > 0) for (let k = 1; k <= 14; k++) anillo(zona, ep.zone.r * k / 14, rgba(T.burst, 0.5 * flash), 3, S, m);
+  if ($("zona").checked) anillo(zona, ep.zone.r, rgba(T.burst, 0.5), 1.5, S, m);
+  }
+  const colorMsg = [T.muted, T.symbol, T.share, T.lie];
+  for (const s of ep.signals) {
+    if (s.t > t) continue; const r = ep.c * (tf - s.t); if (r > 1 || r <= 0) continue;
+    anillo(ep.pos[s.o], r, rgba(colorMsg[s.msg], (s.msg === 0 ? 0.14 : 0.9) * (1 - r)), s.msg === 0 ? 1 : 2.5, S, m);
+  }
+  if (NARR.activo) NARR.efectos2d.dibujar(cx, ep, tf, { P, wrap, T, civ, escala: S });
+  else for (const p of ep.projectiles) {
+    if (p.t > t) continue; const o = ep.pos[p.o];
+    const dx = wrap(p.tx - o[0] + .5) - .5, dy = wrap(p.ty - o[1] + .5) - .5, L = Math.hypot(dx, dy) || 1e-6;
+    const edad = t - p.t, f = Math.min(ep.v * edad / L, 1), q = P([wrap(o[0] + dx * f), wrap(o[1] + dy * f)]);
+    cx.beginPath();
+    if (f < 1) { cx.fillStyle = civ(p.o); cx.arc(q[0], q[1], 5, 0, 7); cx.fill(); }
+    else if (edad * ep.v / L < 1 + 4 * ep.v / L) { cx.strokeStyle = T.burst; cx.lineWidth = 3; cx.arc(q[0], q[1], 14, 0, 7); cx.stroke(); }
+  }
+  const k0 = Math.min(t, ep.steps - 1);
+  for (let i = 0; i < ep.n; i++) {
+    const vivo = ep.alive[t][i] === 1, rec = Math.max(ep.res[t][i], 0), q = P(ep.pos[i]), kind = ep.kind[k0][i];
+    const rad = S * (0.012 + 0.010 * Math.log(1 + rec)) * (vivo ? 1 : 0.55);
+    if (NARR.activo) {
+      const st = ST(i), es = estadoCiv(i, t), rp = Math.max(S * 0.036, rad * 2.6), seg = performance.now() / 1000;
+      OB.galaxia.halo(cx, q[0], q[1], rp * 3.2, civ(i), vivo ? 0.30 : 0.08);
+      OB.planeta.canvas(cx, st.mundo, SEMILLA(i), q[0], q[1], rp, seg, es);
+      cx.beginPath(); cx.strokeStyle = vivo ? civ(i) : T.dead; cx.lineWidth = 2; cx.arc(q[0], q[1], rp + 3, 0, 7); cx.stroke();
+      OB.kardashev.canvas(cx, q[0], q[1], rp, es.nivel, seg, T);
+      OB.astronauta.canvas(cx, st, es, q[0], q[1] - rp * 0.9, rp * 2.1, seg);
+      cx.fillStyle = T.ink; cx.font = `13px ${T.sans}`; cx.fillText("C" + (i + 1), q[0] + rp + 6, q[1] - rp - 3);
+      continue;
+    }
+    cx.beginPath(); cx.fillStyle = vivo ? civ(i) : T.dead; cx.arc(q[0], q[1], rad, 0, 7); cx.fill();
+    if (vivo && (kind === 0 || kind === 3 || kind === 4)) { cx.beginPath(); cx.strokeStyle = rgba(T.ink, 0.4); cx.lineWidth = 1.5; cx.arc(q[0], q[1], rad * 1.7, 0, 7); cx.stroke(); }
+    if (vivo && ep.refuge[t][i] === 1) { cx.beginPath(); cx.strokeStyle = T.refuge; cx.lineWidth = 3; cx.arc(q[0], q[1], rad * 2.3, 0, 7); cx.stroke(); }
+    if (!vivo) { cx.strokeStyle = T.danger; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(q[0] - rad, q[1] - rad); cx.lineTo(q[0] + rad, q[1] + rad); cx.moveTo(q[0] - rad, q[1] + rad); cx.lineTo(q[0] + rad, q[1] - rad); cx.stroke(); }
+    cx.fillStyle = T.ink; cx.font = `13px ${T.sans}`; cx.fillText("C" + (i + 1), q[0] + rad + 5, q[1] - rad - 3);
+  }
+}
+
+// ---------- lectura: métricas, tabla, gráfico ----------
+function tarjeta(etiqueta, valor, nota, clase = "") {
+  return `<div class="ob-metric ${clase}"><div class="ob-metric__label">${etiqueta}</div><div class="ob-metric__value">${valor}</div><div class="ob-metric__note">${nota}</div></div>`;
+}
+function metricas() {
+  if (!ep) return; const r = ep.resumen, p = ep.promedio, f = x => (x >= 0 ? "+" : "") + x.toFixed(2);
+  let h = "";
+  if (p) h += tarjeta("Retorno medio", p.retorno.map(f).join(" / "), `promedio de ${p.episodios} episodios`, "ob-metric--hl wide");
+  h += tarjeta("Retorno", r.retorno.slice(0, 2).map(f).join(" / "), "este episodio" + (r.retorno.length > 2 ? " (civilizaciones 1 y 2)" : ""), p ? "" : "ob-metric--hl wide");
+  if (p) h += tarjeta("Supervivencia", p.supervivencia.join(" / "), "fracción viva, promedio");
+  h += tarjeta("Mensajes", r.mensajes, "compartir y símbolos");
+  if (ep.deception) h += tarjeta("Mentiras", r.mentiras, "mediciones falsas");
+  h += tarjeta("Ataques", r.ataques, `${r.muertes_por_ataque} muertes por ataque`);
+  $("metricas").innerHTML = h;
+  $("nota_episodio").textContent = p ? "" : "Un episodio no es representativo: activa «Promediar 40 episodios» para ver el promedio.";
+  $("titulo").textContent = ep.policy.replaceAll("fijo:", "").replaceAll("red:", "red ").slice(0, 60) + " · semilla " + ep.seed;
+}
+function tabla() {
+  if (!ep) return; const t = Math.min(Math.floor(frame), ep.steps), k0 = Math.min(t, ep.steps - 1);
+  let h = '<thead><tr><th scope="col">Civilización</th><th scope="col">Estado</th><th scope="col" style="text-align:right">Recursos</th><th scope="col">Acción</th></tr></thead><tbody>';
+  for (let i = 0; i < ep.n; i++) {
+    const vivo = ep.alive[t][i] === 1, kind = ep.kind[k0][i], act = ep.act ? ep.act[k0][i] : -1;
+    let nombre = kind >= 0 ? ACCIONES[kind] : "—";
+    if (ep.deception && kind === 3 && act === 2 + ep.n_symbols) nombre = "mentir";
+    h += `<tr data-dead="${!vivo}"><td><span class="ob-civ" data-dead="${!vivo}" style="--c:var(--civ-${i % 8 + 1})"><i></i>C${i + 1}</span></td><td>${vivo ? "vivo" : "muerto"}</td><td class="num">${ep.res[t][i].toFixed(2)}</td><td>${nombre}</td></tr>`;
+  }
+  $("tabla").innerHTML = h + "</tbody>";
+  $("turno").textContent = t; $("linea").value = t;
+  const vivos = ep.alive[t].filter(x => x === 1).length;
+  $("lectura").textContent = `Turno ${t} de ${ep.steps}. ${vivos} de ${ep.n} civilizaciones vivas.`;
+}
+const gf = $("grafico"), gx = gf.getContext("2d");
+function grafico() {
+  const W = gf.width, H = gf.height; gx.clearRect(0, 0, W, H); if (!ep) return;
+  const maxv = Math.max(1, ...ep.res.flat()) * 1.1, Tn = ep.steps;
+  for (let i = 0; i < ep.n; i++) {
+    gx.strokeStyle = ep.alive[ep.steps][i] ? civ(i) : T.dead; gx.lineWidth = 2; gx.beginPath();
+    ep.res.forEach((row, t) => { const x = t / Tn * W, y = H - 4 - row[i] / maxv * (H - 8); t ? gx.lineTo(x, y) : gx.moveTo(x, y); }); gx.stroke();
+  }
+  const x = Math.min(Math.floor(frame), Tn) / Tn * W; gx.strokeStyle = T.sun; gx.lineWidth = 2; gx.beginPath(); gx.moveTo(x, 0); gx.lineTo(x, H); gx.stroke();
+}
+// ---------- vista 3D: el toro (three.js) ----------
+const V3 = { modo: "plano", listo: false, error: false };
+const GR = 3.0, PQ = 1.1; // radio mayor y radio del tubo
+const col3 = hex => new THREE.Color(hex);
+const PL = 8; // lado del plano de galaxia en el modo narrativo
+function p3(x, y, h = 0) { // punto del toro; el eje vertical es y
+  if (NARR.activo) return new THREE.Vector3((x - 0.5) * PL, h, -(y - 0.5) * PL);
+  const u = 2 * Math.PI * x, v = 2 * Math.PI * y, rho = GR + (PQ + h) * Math.cos(v);
+  return new THREE.Vector3(rho * Math.cos(u), (PQ + h) * Math.sin(v), -rho * Math.sin(u));
+}
+function n3(x, y) {
+  if (NARR.activo) return new THREE.Vector3(0, 1, 0);
+  const u = 2 * Math.PI * x, v = 2 * Math.PI * y; return new THREE.Vector3(Math.cos(v) * Math.cos(u), Math.sin(v), -Math.cos(v) * Math.sin(u)); }
+function mezclar(hex, fondo, a) { const c = col3(hex), f = col3(fondo); return c.multiplyScalar(a).add(f.multiplyScalar(1 - a)); }
+function iniciar3d() {
+  const caja = $("arena3d");
+  try {
+    V3.renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) { V3.error = true; caja.innerHTML = '<div id="aviso3d">Este navegador no puede dibujar en 3D (WebGL). Usa la vista plana o el visor de PyVista.</div>'; return; }
+  V3.escena = new THREE.Scene();
+  V3.camara = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  V3.camara.position.set(8.5, 7.5, 9.5);
+  V3.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  caja.appendChild(V3.renderer.domElement);
+  V3.controles = new THREE.OrbitControls(V3.camara, V3.renderer.domElement);
+  V3.controles.enableDamping = true; V3.controles.minDistance = 6; V3.controles.maxDistance = 22;
+  V3.hemi = new THREE.HemisphereLight(0xffffff, 0x445066, 0.85); V3.escena.add(V3.hemi);
+  V3.sol = new THREE.DirectionalLight(0xffffff, 0.7); V3.sol.position.set(6, 10, 4); V3.escena.add(V3.sol);
+  V3.estatico = new THREE.Group(); V3.dinamico = new THREE.Group(); V3.escena.add(V3.estatico, V3.dinamico);
+  V3.listo = true; aplicarModo(); ajustar3d(); reconstruirNarr3d();
+  new ResizeObserver(ajustar3d).observe(caja);
+}
+function construirEstatico() {
+  V3.estatico.clear(); V3.escena.background = col3(T.void);
+  if (NARR.activo) { // espacio negro con cielo estrellado; el mapa es un cuadrado de bordes conectados
+    V3.estatico.add(cieloEstrellado());
+    return;
+  }
+  const toro = new THREE.Mesh(new THREE.TorusGeometry(GR, PQ * 0.975, 56, 140),
+    new THREE.MeshStandardMaterial({ color: col3(T.raised), roughness: 0.55, metalness: 0.08 }));
+  toro.rotation.x = Math.PI / 2; V3.estatico.add(toro);
+  const pts = [], n = 20, m = 120;
+  for (let k = 0; k < n; k++) for (let j = 0; j < m; j++) {
+    const a = k / n, s0 = j / m, s1 = (j + 1) / m;
+    pts.push(p3(a, s0, 0.012), p3(a, s1, 0.012), p3(s0, a, 0.012), p3(s1, a, 0.012));
+  }
+  const rejilla = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: mezclar(T["line-strong"], T.raised, 0.6) }));
+  V3.estatico.add(rejilla);
+}
+function ajustar3d() {
+  if (!V3.listo) return; const c = $("arena3d"), w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return; V3.renderer.setSize(w, h, false); V3.camara.aspect = w / h; V3.camara.updateProjectionMatrix();
+}
+function linea3(centro, radio, color, alfa, h) {
+  const N = 140, segs = []; let prev = null;
+  for (let k = 0; k <= N; k++) {
+    const a = k / N * 2 * Math.PI, x = wrap(centro[0] + radio * Math.cos(a)), y = wrap(centro[1] + radio * Math.sin(a));
+    if (prev && Math.abs(x - prev[0]) < 0.5 && Math.abs(y - prev[1]) < 0.5) segs.push(p3(prev[0], prev[1], h), p3(x, y, h));
+    prev = [x, y];
+  }
+  if (!segs.length) return null;
+  const mat = new THREE.LineBasicMaterial({ color: col3(color), transparent: true, opacity: alfa });
+  return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segs), mat);
+}
+// Los sistemas son decorativos: la estrella, la órbita y el giro del planeta no son datos.
+// Lo que sí es dato: la posición del sistema, los recursos (tamaño del planeta) y el estado.
+const SIS = { Rs: 0.16, Ro: 0.55, k: 1 };
+const TEX = {};
+function texturaEstrella() {
+  if (TEX.estrella) return TEX.estrella;
+  const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d");
+  const g = x.createRadialGradient(128, 128, 20, 128, 128, 140); g.addColorStop(0, "#fff2b8"); g.addColorStop(0.7, "#ffb43a"); g.addColorStop(1, "#e2641a");
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  let a = 99; const r = () => (a = (a * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let k = 0; k < 1400; k++) { x.fillStyle = r() < 0.5 ? "rgba(255,240,170,0.22)" : "rgba(190,70,10,0.22)"; x.beginPath(); x.arc(r() * 256, r() * 256, 2 + r() * 7, 0, 7); x.fill(); }
+  return (TEX.estrella = new THREE.CanvasTexture(c));
+}
+function texturaBrillo() {
+  if (TEX.brillo) return TEX.brillo;
+  const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, "rgba(255,255,255,0.9)"); g.addColorStop(0.25, "rgba(255,255,255,0.28)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  return (TEX.brillo = new THREE.CanvasTexture(c));
+}
+function cieloEstrellado() { // esfera de estrellas alrededor de la escena (decorativa y determinista)
+  let a = 4242; const r = () => (a = (a * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const pos = [], col = [];
+  for (let k = 0; k < 3200; k++) {
+    const u = r() * 2 - 1, th = r() * Math.PI * 2, s = Math.sqrt(1 - u * u), R = 70;
+    pos.push(R * s * Math.cos(th), R * u, R * s * Math.sin(th));
+    const q = r(), tono = q < 0.12 ? [1, 0.82, 0.62] : q < 0.24 ? [0.7, 0.82, 1] : [1, 1, 1], br = 0.35 + r() * 0.65;
+    col.push(tono[0] * br, tono[1] * br, tono[2] * br);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.7, sizeAttenuation: false, vertexColors: true }));
+}
+function reconstruirNarr3d() {
+  if (!V3.listo) return;
+  if (V3.narr) { V3.narr.traverse(o => { if (o.geometry) o.geometry.dispose(); }); V3.escena.remove(V3.narr); V3.narr = null; }
+  if (NARR.efectos3d) { NARR.efectos3d.limpiar(); NARR.efectos3d = null; }
+  if (!NARR.activo || !ep) return;
+  V3.narr = new THREE.Group(); V3.escena.add(V3.narr); V3.civs = [];
+  // Escala fiel: la distancia entre civilizaciones es la del toro (camino más corto por los bordes);
+  // el sistema se encoge para no solaparse con su vecino más cercano.
+  let dmin = 1; const dt1 = (a, b) => Math.abs(((a - b + 1.5) % 1 + 1) % 1 - 0.5);
+  for (let i = 0; i < ep.n; i++) for (let j = i + 1; j < ep.n; j++) dmin = Math.min(dmin, Math.hypot(dt1(ep.pos[i][0], ep.pos[j][0]), dt1(ep.pos[i][1], ep.pos[j][1])));
+  SIS.Ro = Math.max(0.1, Math.min(0.55, 0.4 * dmin * PL)); SIS.Rs = SIS.Ro * 0.29; SIS.k = SIS.Ro / 0.55;
+  for (let i = 0; i < ep.n; i++) { // copias tenues al otro lado del borde: el mapa se repite
+    for (const ox of [-1, 0, 1]) for (const oy of [-1, 0, 1]) {
+      if (!ox && !oy) continue; const x = ep.pos[i][0] + ox, y = ep.pos[i][1] + oy;
+      if (x < -0.18 || x > 1.18 || y < -0.18 || y > 1.18) continue;
+      const f = new THREE.Group(); f.position.copy(p3(x, y, 0));
+      f.add(new THREE.Mesh(new THREE.SphereGeometry(SIS.Rs, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.4 })));
+      const br = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaBrillo(), color: col3(civ(i)), transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })); br.scale.setScalar(SIS.Rs * 9); f.add(br);
+      const orb = []; for (let k = 0; k < 64; k++) { const a = k / 64 * Math.PI * 2; orb.push(new THREE.Vector3(Math.cos(a) * SIS.Ro, 0, Math.sin(a) * SIS.Ro)); }
+      f.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(orb), new THREE.PointsMaterial({ color: col3(civ(i)), size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.3 })));
+      V3.narr.add(f);
+    }
+  }
+  for (let i = 0; i < ep.n; i++) {
+    const st = ST(i), sis = new THREE.Group(), sem = SEMILLA(i);
+    sis.position.copy(p3(ep.pos[i][0], ep.pos[i][1], 0));
+    const estrella = new THREE.Mesh(new THREE.SphereGeometry(SIS.Rs, 32, 24), new THREE.MeshBasicMaterial({ map: texturaEstrella() }));
+    const brillo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaBrillo(), color: col3(civ(i)), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    brillo.scale.setScalar(SIS.Rs * 9);
+    const luz = new THREE.PointLight(0xffe6b8, 2.6, Math.max(1.5, SIS.Ro * 12), 1.2);
+    const orb = [];
+    for (let k = 0; k < 96; k++) { const a = k / 96 * Math.PI * 2; orb.push(new THREE.Vector3(Math.cos(a) * SIS.Ro, 0, Math.sin(a) * SIS.Ro)); }
+    const orbita = new THREE.Points(new THREE.BufferGeometry().setFromPoints(orb), new THREE.PointsMaterial({ color: col3(civ(i)), size: 2, sizeAttenuation: false, transparent: true, opacity: 0.8 }));
+    const g = new THREE.Group();
+    const pl = OB.planeta.three(THREE, st.mundo, sem, 1), ka = OB.kardashev.three(THREE, 1.0), as = OB.astronauta.three(THREE, st);
+    as.position.set(0, 1.0, 0); as.scale.setScalar(1.6);
+    g.add(pl, ka, as); sis.add(estrella, brillo, luz, orbita, g); V3.narr.add(sis);
+    V3.civs.push({ sis, g, pl, ka, as, st, estrella, ang: (sem % 628) / 100, w: 0.18 + (sem % 100) / 500 });
+  }
+  NARR.efectos3d = OB.efectos.crear3d(THREE, V3.escena, { p3, n3, T, civ, radioPlaneta: SIS.Ro * 0.5 });
+}
+const VISTA_GENERAL = { pos: () => new THREE.Vector3(0, 7.8, 8.8), objetivo: () => new THREE.Vector3(0, 0, 0) };
+function planetaMundo(i) { const c = V3.civs[i]; return c.sis.position.clone().add(c.g.position); }
+/** Salta con efecto warp hasta la civilización `i` (o a la vista general si i < 0). */
+function enfocar(i) {
+  if (!V3.listo || !NARR.activo || !V3.civs) return;
+  V3.foco = i >= 0 ? i : null;
+  V3.warp = { t0: performance.now(), dur: 1700, pos: V3.camara.position.clone(), obj: V3.controles.target.clone(), civ: i };
+}
+function actualizarNarr3d(t) {
+  if (!V3.narr) return; const ahora = performance.now(), seg = ahora / 1000, dt = Math.min(0.1, (ahora - (V3.ultimo || ahora)) / 1000); V3.ultimo = ahora;
+  V3.civs.forEach((c, i) => {
+    const es = estadoCiv(i, t), rec = Math.max(ep.res[t][i], 0), r = 0.5 * (0.10 + 0.07 * Math.log1p(rec)) * SIS.k;
+    if (V3.foco !== i) c.ang += dt * c.w; // al seleccionar un planeta se detiene su órbita decorativa
+    c.g.position.set(Math.cos(c.ang) * SIS.Ro, 0, Math.sin(c.ang) * SIS.Ro); c.g.scale.setScalar(r);
+    c.estrella.rotation.y = seg * 0.05; c.estrella.scale.setScalar(1 + 0.015 * Math.sin(seg * 1.7 + i));
+    c.pl.userData.actualizar(seg, es); c.ka.userData.actualizar(es.nivel, seg); c.as.userData.actualizar(es, seg);
+  });
+  if (NARR.efectos3d) NARR.efectos3d.actualizar(ep, Math.min(frame, ep.steps));
+  const w = V3.warp;
+  if (w) {
+    const k0 = Math.min(1, (ahora - w.t0) / w.dur), k = k0 < 0.5 ? 4 * k0 * k0 * k0 : 1 - Math.pow(-2 * k0 + 2, 3) / 2;
+    const objetivo = w.civ >= 0 ? planetaMundo(w.civ) : VISTA_GENERAL.objetivo();
+    const destino = w.civ >= 0 ? objetivo.clone().add(new THREE.Vector3(0.55, 0.42, 1.15).multiplyScalar(SIS.k)) : VISTA_GENERAL.pos();
+    V3.camara.position.lerpVectors(w.pos, destino, k); V3.controles.target.lerpVectors(w.obj, objetivo, k);
+    V3.camara.fov = 38 + 42 * Math.sin(Math.PI * k); V3.camara.updateProjectionMatrix(); // efecto de salto
+    if (k0 >= 1) { V3.warp = null; V3.camara.fov = 38; V3.camara.updateProjectionMatrix(); }
+  } else if (V3.foco !== null && V3.foco !== undefined) { // seguir al planeta seleccionado
+    const objetivo = planetaMundo(V3.foco), delta = objetivo.clone().sub(V3.controles.target);
+    V3.camara.position.add(delta); V3.controles.target.copy(objetivo);
+  }
+}
+function limpiar3d() {
+  V3.dinamico.children.slice().forEach(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !o.isSprite) o.material.dispose(); V3.dinamico.remove(o); });
+}
+const ROTULOS = {};
+function etiqueta3d(i, rec, vivo) { // rótulo «C1 2.3» sobre cada civilización, con caché por valor
+  const clave = `${i}|${rec.toFixed(1)}|${vivo}|${document.body.dataset.theme}`;
+  if (!ROTULOS[clave]) {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
+    x.font = `600 30px ${T.sans}`; x.textAlign = "center"; x.textBaseline = "middle";
+    x.lineWidth = 6; x.strokeStyle = T.void; const txt = `C${i + 1}  ${rec.toFixed(1)}`; x.strokeText(txt, 128, 34);
+    x.fillStyle = vivo ? T.ink : T.muted; x.fillText(txt, 128, 34);
+    ROTULOS[clave] = new THREE.CanvasTexture(c);
+  }
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: ROTULOS[clave], depthTest: false, transparent: true }));
+  m.scale.set(1.0, 0.25, 1); return m;
+}
+function dibujar3d() {
+  if (!V3.listo || !ep) { if (V3.listo) V3.renderer.render(V3.escena, V3.camara); return; }
+  limpiar3d(); const g = V3.dinamico, tf = Math.min(frame, ep.steps), t = Math.min(Math.floor(frame), ep.steps), k0 = Math.min(t, ep.steps - 1);
+  const zona = [ep.zone.x, ep.zone.y]; let flash = 0;
+  for (const b of ep.bursts) if (b <= t && t - b < 4) flash = Math.max(flash, 1 - (t - b) / 4);
+  if (flash > 0 && !NARR.activo) { // disco de anillos concéntricos
+    for (let k = 1; k <= 10; k++) { const l = linea3(zona, ep.zone.r * k / 10, T.burst, 0.55 * flash, 0.03); if (l) g.add(l); }
+  }
+  if ($("zona").checked) { const l = linea3(zona, ep.zone.r, T.burst, 0.6, 0.03); if (l) g.add(l); }
+  const colorMsg = [T.muted, T.symbol, T.share, T.lie];
+  for (const s of ep.signals) {
+    if (s.t > t) continue; const r = ep.c * (tf - s.t); if (r > 1 || r <= 0) continue;
+    const l = linea3(ep.pos[s.o], r, colorMsg[s.msg], (s.msg === 0 ? 0.18 : 1) * (1 - r), 0.045); if (l) g.add(l);
+  }
+  for (const p of ep.projectiles) {
+    if (p.t > t) continue; const o = ep.pos[p.o];
+    const dx = wrap(p.tx - o[0] + .5) - .5, dy = wrap(p.ty - o[1] + .5) - .5, L = Math.hypot(dx, dy) || 1e-6, f = Math.min(ep.v * (t - p.t) / L, 1);
+    if (f >= 1) continue;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), new THREE.MeshBasicMaterial({ color: col3(civ(p.o)) }));
+    m.position.copy(p3(wrap(o[0] + dx * f), wrap(o[1] + dy * f), 0.12)); g.add(m);
+  }
+  for (let i = 0; i < ep.n; i++) {
+    const [x, y] = ep.pos[i], vivo = ep.alive[t][i] === 1, rec = Math.max(ep.res[t][i], 0);
+    const rad = (0.10 + 0.07 * Math.log1p(rec)) * (vivo ? 1 : 0.6), color = vivo ? civ(i) : T.dead;
+    if (!NARR.activo) {
+    const esfera = new THREE.Mesh(new THREE.SphereGeometry(rad, 28, 20), new THREE.MeshStandardMaterial({ color: col3(color), roughness: 0.4 }));
+    esfera.position.copy(p3(x, y, rad)); g.add(esfera);
+    }
+    const rotulo = etiqueta3d(i, rec, vivo); rotulo.position.copy(p3(x, y, rad * 2 + 0.28)); g.add(rotulo);
+    if (vivo && !NARR.activo) {
+      if (ep.refuge[t][i] === 1) {
+        const escudo = new THREE.Mesh(new THREE.SphereGeometry(rad * 2.1, 24, 16), new THREE.MeshBasicMaterial({ color: col3(T.refuge), transparent: true, opacity: 0.28 }));
+        escudo.position.copy(p3(x, y, rad)); g.add(escudo);
+      }
+    }
+  }
+  actualizarNarr3d(t); V3.controles.update(); V3.renderer.render(V3.escena, V3.camara);
+}
+function ponerVista(modo) {
+  V3.modo = modo; const en3d = modo === "3d";
+  $("vistaPlano").setAttribute("aria-pressed", !en3d); $("vista3d").setAttribute("aria-pressed", en3d);
+  $("arena").hidden = en3d; $("arena3d").hidden = !en3d; $("nota3d").hidden = !en3d;
+  if ($("leyPilar")) $("leyPilar").hidden = !en3d;
+  if (en3d && !V3.listo && !V3.error) { if (typeof THREE === "undefined") { V3.error = true; $("arena3d").innerHTML = '<div id="aviso3d">No se pudo cargar la biblioteca 3D.</div>'; } else iniciar3d(); }
+  if (en3d) ajustar3d();
+}
+$("vistaPlano").onclick = () => ponerVista("plano"); $("vista3d").onclick = () => ponerVista("3d");
+const _aplicarTema = aplicarTema;
+aplicarTema = function (tema) { _aplicarTema(tema); if (V3.listo) construirEstatico(); };
+
+// ---------- red de comunicación: quién recibió mensajes de quién ----------
+const rd = $("red"), rx = rd.getContext("2d");
+function comunidades(cuentas, n, minimo = 3) { // vínculo: mensajes en ambos sentidos y al menos `minimo` en total
+  const padre = [...Array(n).keys()], raiz = i => padre[i] === i ? i : (padre[i] = raiz(padre[i]));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+    if (cuentas[i][j] > 0 && cuentas[j][i] > 0 && cuentas[i][j] + cuentas[j][i] >= minimo) padre[raiz(i)] = raiz(j);
+  const grupos = {}; for (let i = 0; i < n; i++) (grupos[raiz(i)] = grupos[raiz(i)] || []).push(i);
+  return Object.values(grupos);
+}
+function redComunicacion() {
+  if (!ep || !ep.mensajes) { $("panelRed").hidden = true; return; } $("panelRed").hidden = false;
+  const W = rd.width, m = 40, S = W - 2 * m, n = ep.n, t = Math.min(Math.floor(frame), ep.steps);
+  const cuentas = Array.from({ length: n }, () => Array(n).fill(0));
+  for (const [tm, r, e] of ep.mensajes) if (tm <= t) cuentas[r][e]++;
+  const P = q => [m + q[0] * S, m + (1 - q[1]) * S], grupos = comunidades(cuentas, n);
+  rx.clearRect(0, 0, W, W); rx.strokeStyle = T["line-strong"]; rx.lineWidth = 1; rx.strokeRect(m, m, S, S);
+  rx.save(); rx.beginPath(); rx.rect(m, m, S, S); rx.clip();
+  const maximo = Math.max(1, ...cuentas.flat());
+  for (let e = 0; e < n; e++) for (let r = 0; r < n; r++) {
+    const c = cuentas[r][e]; if (!c) continue; // flecha del emisor e al receptor r por el camino más corto del toro
+    const a = ep.pos[e], dx = wrap(ep.pos[r][0] - a[0] + .5) - .5, dy = wrap(ep.pos[r][1] - a[1] + .5) - .5;
+    rx.strokeStyle = rgba(T.share, 0.18 + 0.7 * c / maximo); rx.lineWidth = 1 + 5 * c / maximo;
+    for (const ox of [-1, 0, 1]) for (const oy of [-1, 0, 1]) {
+      const p0 = P([a[0] + ox, a[1] + oy]), p1 = P([a[0] + dx + ox, a[1] + dy + oy]);
+      rx.beginPath(); rx.moveTo(p0[0], p0[1]); rx.lineTo(p1[0], p1[1]); rx.stroke();
+    }
+  }
+  rx.restore();
+  const grupoDe = i => grupos.findIndex(g => g.includes(i));
+  for (let i = 0; i < n; i++) {
+    const q = P(ep.pos[i]), vivo = ep.alive[t][i] === 1, g = grupoDe(i), enGrupo = grupos[g].length > 1;
+    rx.beginPath(); rx.fillStyle = vivo ? civ(i) : T.dead; rx.arc(q[0], q[1], 11, 0, 7); rx.fill();
+    if (enGrupo) { rx.beginPath(); rx.strokeStyle = T.sun; rx.lineWidth = 2.5; rx.arc(q[0], q[1], 16, 0, 7); rx.stroke(); }
+    rx.fillStyle = T.ink; rx.font = `600 13px ${T.sans}`; rx.fillText("C" + (i + 1), q[0] + 18, q[1] - 12);
+  }
+  const total = ep.mensajes.filter(x => x[0] <= t).length, nombres = grupos.map(g => "{" + g.map(i => "C" + (i + 1)).join(", ") + "}").join(" ");
+  $("redTexto").textContent = `${total} mensajes recibidos hasta el turno ${t}. Cada flecha va del emisor al receptor y es más gruesa cuantos más mensajes. Comunidades (mensajes en ambos sentidos, al menos 3): ${nombres}. El borde ámbar marca a quien está en una comunidad.`;
+}
+const pt = $("partitura"), px = pt.getContext("2d");
+function partitura() {
+  if (!ep) return; const fila = 22, margen = 6, W = pt.width, H = margen * 2 + fila * ep.n;
+  if (pt.height !== H) pt.height = H; px.clearRect(0, 0, W, H); const Tn = ep.steps, X = t => t / Tn * W;
+  for (const b of ep.bursts) { px.fillStyle = rgba(T.burst, 0.16); px.fillRect(X(b) - 1, 0, 3, H); }
+  for (let i = 0; i < ep.n; i++) {
+    const y = margen + i * fila + fila / 2;
+    px.strokeStyle = T.line; px.lineWidth = 1; px.beginPath(); px.moveTo(0, y); px.lineTo(W, y); px.stroke();
+    for (let t = 0; t < Tn; t++) {
+      const kind = ep.kind[t][i], vivo = ep.alive[t][i] === 1, x = X(t);
+      if (!vivo) { px.fillStyle = rgba(T.dead, 0.5); px.fillRect(x, y - 1, W / Tn + 1, 3); continue; }
+      let color = null, alto = 10;
+      if (kind === 4) color = T.share; else if (kind === 3) { color = (ep.deception && ep.act[t][i] === 2 + ep.n_symbols) ? T.lie : T.symbol; }
+      else if (kind === 5) { color = T.danger; alto = 16; } else if (kind === 6) color = T.refuge; else if (kind === 2) { color = T.muted; alto = 5; }
+      if (color) { px.fillStyle = color; px.fillRect(x, y - alto / 2, Math.max(2, W / Tn), alto); }
+    }
+    px.fillStyle = T.ink; px.font = `12px ${T.sans}`; px.fillText("C" + (i + 1), 2, y - 7);
+  }
+  const x = Math.min(Math.floor(frame), Tn) / Tn * W; px.strokeStyle = T.sun; px.lineWidth = 2; px.beginPath(); px.moveTo(x, 0); px.lineTo(x, H); px.stroke();
+}
+function bucle(ts) {
+  if (ep && jugando) { frame += (ts - ultimo) / 1000 * +$("vel").value; if (frame >= ep.steps) { frame = ep.steps; parar(); } }
+  ultimo = ts; if (V3.modo === "3d") dibujar3d(); else dibujarArena(); tabla(); grafico(); partitura(); redComunicacion(); if (ep && NARR.activo) narrativoPanel(); requestAnimationFrame(bucle);
+}
+requestAnimationFrame(t => { ultimo = t; bucle(t); });
+try { NARR.activo = localStorage.getItem("modo") !== "cientifico"; } catch (e) {}
+actualizar(); cargar();
+</script>
+</body>
+</html>

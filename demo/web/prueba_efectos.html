@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de efectos</title>
+<style>
+  :root { --bg: #0b0e17; --ink: #e8ecf4; --line: #2a3350; }
+  :root.claro { --bg: #f4f1ea; --ink: #1d2233; --line: #c9c3b4; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; flex-wrap: wrap; }
+  button, input { font: inherit; }
+  main { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 16px 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 13px; padding: 4px 0; }
+  canvas { border: 1px solid var(--line); display: block; max-width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Prueba de efectos</strong>
+  <button id="juego" type="button">Pausa</button>
+  <label>Turno <input id="turno" type="range" min="0" max="59" step="0.1" value="0"></label>
+  <span id="etq">0</span>
+  <button id="tema" type="button">Fondo claro</button>
+</header>
+<main>
+  <figure><canvas id="c2d" width="560" height="560" role="img"
+    aria-label="Arena 2D con dos civilizaciones, un ataque, un estallido y un refugio"></canvas>
+    <figcaption>2D: reloj propio (2,5 turnos por segundo)</figcaption></figure>
+  <figure><canvas id="c3d" width="560" height="560" role="img"
+    aria-label="Toro 3D con los mismos efectos"></canvas>
+    <figcaption>3D: toro simple</figcaption></figure>
+</main>
+<script src="vendor/three.min.js"></script>
+<script src="modulos/efectos.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Episodio sintético. Civ 1 (x=0.9) ataca a civ 0 (x=0.12) cruzando el borde y la destruye;
+  // civ 0 ataca a civ 1 en t=4, que se refugia y resiste. Estallido en t=40 sobre el borde.
+  const steps = 60;
+  const alive = [];
+  const refuge = [];
+  for (let t = 0; t <= steps; t++) {
+    alive.push([t >= 34 ? 0 : 1, 1]);
+    refuge.push([0, t >= 2 && t <= 14 ? 1 : 0]);
+  }
+  const ep = {
+    n: 2, steps, v: 0.05, pos: [[0.12, 0.5], [0.9, 0.5]], alive, refuge,
+    projectiles: [{ o: 0, t: 4, tx: 0.9, ty: 0.5 }, { o: 1, t: 28, tx: 0.12, ty: 0.5 }],
+    bursts: [44], zone: { x: 0.95, y: 0.2, r: 0.18 },
+    muertes: [{ t: 34, civ: 0, causa: "ataque", atacante: 1 }],
+  };
+  const oscuro = { burst: "#ff9b3d", refuge: "#4aa3ff", danger: "#ff4040", sun: "#ffd24a",
+    dead: "#555b6e", ink: "#e8ecf4", "civ-1": "#4e9be0", "civ-2": "#e8914f" };
+  const claro = Object.assign({}, oscuro, { dead: "#3a3f50", ink: "#1d2233",
+    "civ-1": "#1f6fb8", "civ-2": "#c4651a" });
+  let T = oscuro;
+  const civ = (i) => T["civ-" + ((i % 8) + 1)];
+  const wrap = (v) => v - Math.floor(v);
+
+  // 2D
+  const c2 = document.getElementById("c2d");
+  const ctx = c2.getContext("2d");
+  const fx2 = OB.efectos.crear2d();
+  const M = 40;
+  const TAM = c2.width - 2 * M;
+  const h = { P: (q) => [M + q[0] * TAM, M + q[1] * TAM], wrap, get T() { return T; }, civ, escala: TAM };
+
+  function planetas2d(t) {
+    for (let i = 0; i < ep.n; i++) {
+      const p = h.P(ep.pos[i]);
+      const viva = alive[Math.min(steps, Math.floor(t))][i] === 1;
+      ctx.globalAlpha = viva ? 1 : 0.5;
+      ctx.fillStyle = civ(i);
+      ctx.beginPath(); ctx.arc(p[0], p[1], TAM * 0.018, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // 3D
+  const c3 = document.getElementById("c3d");
+  const R = 3, r = 1;
+  const renderer = new THREE.WebGLRenderer({ canvas: c3, antialias: true, alpha: true });
+  renderer.setSize(c3.width, c3.height, false);
+  const escena = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  escena.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const luz = new THREE.DirectionalLight(0xffffff, 0.6);
+  luz.position.set(3, 6, 4);
+  escena.add(luz);
+  const toro = new THREE.Mesh(new THREE.TorusGeometry(R, r, 24, 64),
+    new THREE.MeshLambertMaterial({ color: 0x59627a, transparent: true, opacity: 0.55 }));
+  toro.rotation.x = 0;
+  escena.add(toro);
+  // TorusGeometry: u alrededor del anillo en el plano XY y v alrededor del tubo.
+  const h3 = {
+    get T() { return T; }, civ,
+    p3(x, y, alto) {
+      const u = x * Math.PI * 2, v = y * Math.PI * 2, rr = R + (r + alto) * Math.cos(v);
+      return new THREE.Vector3(rr * Math.cos(u), rr * Math.sin(u), (r + alto) * Math.sin(v));
+    },
+    n3(x, y) {
+      const u = x * Math.PI * 2, v = y * Math.PI * 2;
+      return new THREE.Vector3(Math.cos(v) * Math.cos(u), Math.cos(v) * Math.sin(u), Math.sin(v));
+    },
+  };
+  const esferas = ep.pos.map((q, i) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12),
+      new THREE.MeshLambertMaterial({ color: civ(i) }));
+    m.position.copy(h3.p3(q[0], q[1], 0.16));
+    escena.add(m);
+    return m;
+  });
+  const fx3 = OB.efectos.crear3d(THREE, escena, h3);
+
+  // Reloj propio
+  const sl = document.getElementById("turno");
+  const etq = document.getElementById("etq");
+  let jugando = true;
+  let t = 0;
+  let previo = performance.now();
+  document.getElementById("juego").onclick = function () {
+    jugando = !jugando; this.textContent = jugando ? "Pausa" : "Reproducir";
+  };
+  sl.oninput = () => { t = parseFloat(sl.value); };
+  document.getElementById("tema").onclick = function () {
+    const c = document.documentElement.classList.toggle("claro");
+    T = c ? claro : oscuro;
+    this.textContent = c ? "Fondo oscuro" : "Fondo claro";
+    esferas.forEach((m, i) => m.material.color.set(civ(i)));
+  };
+
+  function cuadro(ahora) {
+    const dt = (ahora - previo) / 1000;
+    previo = ahora;
+    if (jugando) { t = (t + dt * 2.5) % steps; sl.value = t; }
+    etq.textContent = t.toFixed(1);
+    ctx.clearRect(0, 0, c2.width, c2.height);
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
+    ctx.strokeRect(M, M, TAM, TAM);
+    planetas2d(t);
+    fx2.dibujar(ctx, ep, t, h);
+    fx3.actualizar(ep, t);
+    const a = ahora / 6000;
+    cam.position.set(Math.cos(a) * 3, -7, 6 + Math.sin(a));
+    cam.lookAt(0, 0, 0);
+    renderer.render(escena, cam);
+    requestAnimationFrame(cuadro);
+  }
+  requestAnimationFrame(cuadro);
+})();
+</script>
+</body>
+</html>

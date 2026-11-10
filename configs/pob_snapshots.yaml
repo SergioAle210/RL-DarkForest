@@ -1,0 +1,24 @@
+# Autojuego con snapshots pasados: la mitad de los episodios juega con una versión anterior.
+extends: base.yaml
+env:
+  n_civs: 2
+  detection_growth: 0.05
+  anomaly:
+    lethality: 0.5
+    radius: 0.45
+train:
+  n_envs: 1024
+  rollout_len: 64
+  total_steps: 10_485_760
+  num_minibatches: 8
+  update_epochs: 4
+  reward_scale: 0.2
+  ent_coef: 0.05
+  ent_coef_final: 0.005
+  max_grad_norm: 1.0
+  save_snapshots: true
+  self_play:
+    rho: 0.5
+    snapshot_every: 5
+    max_snapshots: 20
+    w_snapshot: 1.0

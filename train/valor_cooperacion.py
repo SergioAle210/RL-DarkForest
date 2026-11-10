@@ -44,6 +44,9 @@ def mean_se(values: Any) -> tuple[float, float]:
     return float(values.mean()), float(values.std(ddof=1) / np.sqrt(len(values)))
 
 
+RECIP_OFFER = 2  # mensajes que la estrategia recíproca ofrece sin recibir nada
+
+
 def build_env(
     lethality: float, world: str, steps: int, env_over: dict[str, Any] | None = None
 ) -> DarkForestEnv:
@@ -67,7 +70,7 @@ def pooled(
     last: jax.Array,
     bursts: tuple,
 ) -> tuple[jax.Array, jax.Array, jax.Array]:
-    """Estimación de cada civilización al combinar su medición con la de la otra, forma (B, 2)."""
+    """Estimación de cada civilización al combinar su medición con la del emisor, forma (B, n)."""
     ca, sa, z1, z2 = own
     cb, sb, w1, w2 = other
     first_burst, second_burst = bursts
@@ -105,8 +108,34 @@ def decide(
     extra_shares: int = 4,
     give_up: int = 6,
 ) -> jax.Array:
-    """Acción de cada civilización según el nivel de información de la política."""
+    """Acción de cada civilización según el nivel de información de la política.
+
+    prudente solo acepta mensajes con la etiqueta de compartir verificado (env.costly_signals);
+    mentiroso comparte como coop_real pero con la acción que fabrica la medición (env.deception).
+    """
     fixed = world == PERIODO_FIJO
+    verified_tag = share - 2  # n_symbols + 1: la etiqueta que lleva el compartir verificado
+
+    n = state.pos.shape[1]
+    rows = jnp.arange(state.t.shape[0])[:, None]
+    cols = jnp.arange(n)[None, :]
+
+    def source() -> tuple[jax.Array, jax.Array]:
+        """De quién oye cada civilización: el emisor del último mensaje que acepta, (B, n).
+
+        Devuelve ese emisor y si existe. Con dos civilizaciones es siempre la otra; con más,
+        la que más recientemente le habló. prudente solo acepta los verificados.
+        """
+        received = jnp.where(jnp.eye(n, dtype=bool)[None], -2, state.message_t)
+        if mode == "prudente":
+            received = jnp.where(state.contact_content[..., 0] == verified_tag, received, -2)
+        sender = jnp.argmax(received, axis=-1)
+        return sender, jnp.take_along_axis(received, sender[..., None], -1)[..., 0] >= 0
+
+    def heard_ok() -> jax.Array:
+        """Si cada civilización recibió un mensaje que acepta como válido, forma (B, n)."""
+        return source()[1]
+
     batch = state.t.shape[0]
     t_next = (state.t + 1).astype(jnp.float32)[:, None]
     pos, theta = state.pos, state.theta
@@ -120,7 +149,7 @@ def decide(
 
     if mode == "oculta":
         due = jax.vmap(anomaly.burst_due)(state.t + 1, theta)[:, None]
-        return jnp.where(jnp.broadcast_to(due, (batch, 2)), shelter, 1).astype(jnp.int32)
+        return jnp.where(jnp.broadcast_to(due, (batch, n)), shelter, 1).astype(jnp.int32)
 
     if mode in ("oraculo_cuando", "oraculo"):
         due = jax.vmap(anomaly.burst_due)(state.t + 1, theta)[:, None]
@@ -137,26 +166,35 @@ def decide(
         if mode != "solo":
             own = (ca, sa, z1, z2)
             if mode == "coop_ideal":
+                if n != 2:
+                    raise ValueError("coop_ideal solo está definida para dos civilizaciones")
                 other = tuple(x[:, ::-1] for x in own)
                 got = jnp.ones_like(line)
             else:
-                heard = jnp.stack(
-                    [state.contact_content[:, 0, 1], state.contact_content[:, 1, 0]], axis=1
-                )
+                sender, got = source()
+                heard = state.contact_content[rows, cols, sender]
                 other = (heard[..., 2], heard[..., 3], heard[..., 4], heard[..., 5])
-                got = jnp.stack([state.message_t[:, 0, 1] >= 0, state.message_t[:, 1, 0] >= 0], 1)
             p_due, center, ok = pooled(own, other, got, fixed, t_next, last, bursts)
             inside = distance(pos, center) <= radius + margin
             go = jnp.where(ok, p_due & inside, go)
 
-    actions = jnp.where(jnp.broadcast_to(go, (batch, 2)), shelter, 0)
-    if mode in ("solo", "coop_ideal", "coop_real"):
+    actions = jnp.where(jnp.broadcast_to(go, (batch, n)), shelter, 0)
+    if mode in ("solo", "coop_ideal", "coop_real", "recip", "oyente", "prudente", "mentiroso"):
         actions = jnp.where((state.t == 0)[:, None], OBSERVAR, actions)
-    if mode == "coop_real":
-        got = jnp.stack([state.message_t[:, 0, 1] >= 0, state.message_t[:, 1, 0] >= 0], axis=1)
+    if mode in ("coop_real", "prudente", "mentiroso"):
+        # mentiroso comparte igual que coop_real, pero con la acción que fabrica la medición
+        emit = share - 1 if mode == "mentiroso" else share
+        got = heard_ok()
         age = state.t[:, None]
         waiting = ~got & (age <= give_up)
         sharing = (~go) & (age > 0) & (waiting | (age <= extra_shares))
+        actions = jnp.where(sharing, emit, actions)
+    if mode == "recip":
+        # ojo por ojo con los mensajes: ofrece RECIP_OFFER mensajes y sigue compartiendo hasta
+        # give_up solo con quien ya le envió algo
+        got = heard_ok()
+        age = state.t[:, None]
+        sharing = (~go) & (age > 0) & ((age <= RECIP_OFFER) | (got & (age <= give_up)))
         actions = jnp.where(sharing, share, actions)
     return actions.astype(jnp.int32)
 

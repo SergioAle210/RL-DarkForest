@@ -102,6 +102,8 @@
 | Entrenar con el radio 0.45 en cinco seeds y comparar contra ignorar | Bianca | listo | 2026-11-02 |
 | Ejecutar el barrido exploratorio de tres por tres con tres seeds | | | |
 | Consolidar H1 y H2 con al menos cinco seeds por configuración reportada | | | |
+| Añadir minibatches, escala de reward y entropía decreciente al entrenamiento y probarlos en cinco seeds | | listo | 2026-11-07 |
+| Diagnosticar por qué las civilizaciones se atacan tras el contacto (`train.diagnostico_ataque`) | | listo | 2026-11-07 |
 
 ## Visualización, informe y presentación
 
@@ -110,6 +112,17 @@
 | Consultar episodios guardados y sus metadatos desde notebooks | Sergio | listo | 2026-10-27 |
 | Reproducir episodios con Matplotlib sin ejecutar el entorno | Sergio | listo | 2026-10-27 |
 | Exportar una primera animación GIF de un episodio guardado | Sergio | listo | 2026-10-27 |
+| Implementar el dibujo del diagrama de regímenes λ por c desde las matrices de pagos | | listo | 2026-11-07 |
+| Medir qué cambio de optimizador importa, el efecto de la entropía en la cola de ataque y el uso del canal en 5 seeds | | listo | 2026-11-08 |
+| Guardar snapshots de pesos y graficar la evolución del aprendizaje de una seed | | listo | 2026-11-08 |
+| Implementar la población de autojuego con socios fijos y evaluar con una matriz de cruce | | listo | 2026-11-08 |
+| Clonar a coop_real con DAgger y afinar con RL; medirlo contra el control desde cero | | listo | 2026-11-09 |
+| Barrido λ×c con redes entrenadas (9 celdas, 5 seeds) y explotadores en la celda central | | listo | 2026-11-09 |
+| Entrenar con 6 civilizaciones y analizar coaliciones (H4) | | listo | 2026-11-09 |
+| Generalizar las estrategias fijas a más de 2 civilizaciones y mostrar la red de comunicación en la demo | | listo | 2026-11-09 |
+| Implementar engaño y señales costosas en el entorno y medirlas con estrategias fijas (H3) | | listo | 2026-11-09 |
+| Construir la demo web con simulación en vivo de mundos y políticas, y un catálogo para presentar | | listo | 2026-11-09 |
+| Añadir a la demo la capa narrativa: planetas, astronautas por estrategia, escala de Kardashev ilustrativa, flotas, ficha de civilización y bitácora | | listo | 2026-11-09 |
 | Integrar galaxia, diagrama de fases y video de demostración | | | |
 | Exportar figuras y videos y documentar su almacenamiento | | | |
 | Redactar los módulos, metodología, resultados, limitaciones y referencias | | | |

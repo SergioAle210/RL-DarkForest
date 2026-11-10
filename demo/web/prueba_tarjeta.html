@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es" data-theme="noche">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prueba de ficha y bitácora</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="componentes.css">
+  <link rel="stylesheet" href="modulos/tarjeta.css">
+  <style>
+    /* Solo la maqueta de esta página de prueba. */
+    html { background: var(--void); }
+    body { margin: 0; padding: var(--space-5); background: var(--void); }
+    .prueba__barra { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .prueba__barra .ob-field { flex: 1 1 320px; margin: 0; }
+    .prueba__fichas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); align-items: start; }
+    .prueba__bitacora { max-width: 720px; margin-top: var(--space-5); }
+  </style>
+</head>
+<body class="ob-root">
+  <h1 class="title-lg">Ficha de civilización y bitácora</h1>
+  <p class="ob-help">Episodio sintético de 4 civilizaciones (datos inventados para esta vista previa).</p>
+
+  <div class="prueba__barra">
+    <label class="ob-field">
+      <span class="ob-field__head"><span>Turno</span><span class="ob-field__value" id="turno-valor">0</span></span>
+      <input class="ob-range" id="turno" type="range" min="0" max="120" value="0">
+    </label>
+    <button class="ob-btn" id="tema" type="button">Cambiar tema</button>
+  </div>
+
+  <div class="prueba__fichas" id="fichas"></div>
+  <h2 class="ob-section">Bitácora del observatorio</h2>
+  <div class="prueba__bitacora" id="bitacora"></div>
+
+  <script src="modulos/estilos.js"></script>
+  <script src="modulos/nombres.js"></script>
+  <script src="modulos/astronauta.js"></script>
+  <script src="modulos/planetas.js"></script>
+  <script src="modulos/kardashev.js"></script>
+  <script src="modulos/bitacora.js"></script>
+  <script src="modulos/tarjeta.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var STEPS = 120, N = 4, NSIM = 2;
+
+      // Episodio sintético determinista (decorativo, no es una simulación).
+      function construir() {
+        var pos = [[0.15, 0.2], [0.6, 0.25], [0.35, 0.7], [0.85, 0.8]];
+        var v = 0.05;
+        var dx = Math.abs(pos[1][0] - pos[2][0]), dy = Math.abs(pos[1][1] - pos[2][1]);
+        dx = Math.min(dx, 1 - dx); dy = Math.min(dy, 1 - dy);
+        var llega = 40 + Math.ceil(Math.hypot(dx, dy) / v);   // la sonda de C2 alcanza a C3
+        var muerteC3 = llega + 1, muerteC4 = 71;                 // C4 cae en el estallido del turno 70
+        var alive = [], res = [], refuge = [], emision = [], kind = [], act = [];
+        for (var t = 0; t <= STEPS; t++) {
+          alive.push([1, 1, t >= muerteC3 ? 0 : 1, t >= muerteC4 ? 0 : 1]);
+          res.push([1 + t * 0.2, 1 + t * 0.12, 1 + Math.min(t, muerteC3) * 0.15, 1 + Math.min(t, muerteC4) * 0.18]);
+          refuge.push([t >= 65 ? 1 : 0, t >= 66 && t <= 72 ? 1 : 0, 0, 0]);
+        }
+        for (t = 0; t < STEPS; t++) {
+          var a0 = t < 6 ? 0 : [4, 3, 0, 2][t % 4];
+          var a1 = t === 40 ? 5 : t >= 66 && t <= 72 ? 6 : 0;
+          var a2 = t >= muerteC3 ? -1 : t % 3 === 0 ? 3 : 0;
+          var a3 = t >= muerteC4 ? -1 : 0;
+          kind.push([a0, a1, a2, a3]);
+          act.push([a0 === 3 ? 2 : 0, 0, a2 === 3 ? 2 + NSIM : 0, 0]);
+          emision.push([a0 >= 3 ? 2 : 1, a1 === 5 ? 2 : 1, a2 === 3 ? 2 : 1, 1]);
+        }
+        var mensajes = [], signals = [];
+        for (t = 6; t < STEPS; t += 2) {
+          mensajes.push([t, 2, 0], [t + 1, 0, 2]);
+          if (t % 3 === 0 && t < muerteC3) signals.push({ o: 2, t: t, msg: 3 });
+        }
+        return {
+          n: N, steps: STEPS, c: 0.1, v: v, pos: pos, alive: alive, res: res, refuge: refuge,
+          emision: emision, kind: kind, act: act, mensajes: mensajes.filter(function (m) { return m[0] < STEPS; }),
+          signals: signals, projectiles: [{ o: 1, t: 40, tx: pos[2][0], ty: pos[2][1] }],
+          bursts: [70], zone: { x: 0.8, y: 0.8, r: 0.2 }, deception: true, n_symbols: NSIM,
+          politicas: ["fijo:coop_real", "fijo:ataque_solo", "fijo:mentiroso", "red ft_demo (seed 0)"],
+          policy: "mezcla", seed: 2024
+        };
+      }
+
+      // Tokens de color leídos del tema activo.
+      var NOMBRES = ["void", "surface", "raised", "line", "line-strong", "ink", "muted", "sun", "on-sun",
+        "focus", "share", "symbol", "lie", "burst", "refuge", "danger", "ok", "dead",
+        "civ-1", "civ-2", "civ-3", "civ-4", "civ-5", "civ-6", "civ-7", "civ-8"];
+      function leerT() {
+        var cs = getComputedStyle(document.documentElement), T = {};
+        NOMBRES.forEach(function (n) { T[n] = cs.getPropertyValue("--" + n).trim(); });
+        T.sans = cs.getPropertyValue("--font-sans").trim();
+        return T;
+      }
+
+      var ep = construir();
+      var eventos = OB.bitacora.eventos(ep);
+      var fichas = document.getElementById("fichas");
+      var contenedores = [];
+      for (var i = 0; i < N; i++) {
+        var d = document.createElement("div");
+        fichas.appendChild(d);
+        contenedores.push(d);
+      }
+      var rango = document.getElementById("turno");
+      var valor = document.getElementById("turno-valor");
+
+      function pintar() {
+        var t = +rango.value, T = leerT();
+        valor.textContent = t;
+        contenedores.forEach(function (c, k) { OB.tarjeta.render(c, ep, k, t, T); });
+        OB.bitacora.render(document.getElementById("bitacora"), eventos, t, {});
+      }
+      rango.addEventListener("input", pintar);
+      document.getElementById("tema").addEventListener("click", function () {
+        var r = document.documentElement;
+        r.setAttribute("data-theme", r.getAttribute("data-theme") === "noche" ? "carta" : "noche");
+        pintar();
+      });
+      pintar();
+    })();
+  </script>
+</body>
+</html>

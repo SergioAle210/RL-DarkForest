@@ -21,6 +21,8 @@ uv run python -m train.matriz_pagos --lethality 0                   # diagnósti
 uv run python -m train.pagos_rejilla --out-dir runs/pagos       # matrices de pagos por celda
 uv run python -m train.medir_entrenamiento --config configs/base.yaml --n-envs 1024
 uv run python -m train.evaluar_checkpoint --checkpoint <ruta> --baselines
+uv run python -m demo.servidor        # demo web con simulación en vivo (http://localhost:8765)
+uv run python -m demo.catalogo        # catálogo de escenarios para presentar sin servidor
 make test                 # pytest
 make lint                 # ruff check + format --check
 make sanity               # entrena la config H1 (lambda = 0)
@@ -47,7 +49,8 @@ con `rho=0`. El contrato operativo y la entrega al equipo están en `docs/EPISOD
 | `darkforest/networks.py` | Actor-crítico GRU | Sin lógica de entorno |
 | `train/` | IPPO, población de autojuego, barrido, diagnósticos con políticas fijas | No importa nada de `analysis/` ni `viz/` |
 | `analysis/` | Métricas, replicador, diagrama de fases | Lee trayectorias/resultados en disco, no corre el entorno en vivo |
-| `viz/` | Animación | Solo lectura de trayectorias |
+| `viz/` | Animación y exportación a JSON | Solo lectura de trayectorias |
+| `demo/` | Servidor local y página web de demostración | Capa superior: puede importar `train/` y `viz/` para simular y exportar; nada la importa |
 
 Dependencias permitidas: `darkforest` ← `train`, `analysis`, `viz`. Nunca al revés.
 

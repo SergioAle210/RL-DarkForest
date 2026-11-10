@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba: astronauta</title>
+<style>
+  :root { --fondo: #0b1020; --tinta: #e8ecf5; --suave: #8f9ab5; --linea: #2a3350; --panel: #131a30; }
+  body.claro { --fondo: #f3f5fa; --tinta: #1a2033; --suave: #5b6585; --linea: #cdd3e4; --panel: #ffffff; }
+  body { margin: 0; padding: 16px; background: var(--fondo); color: var(--tinta); font: 14px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  h2 { font-size: 15px; margin: 24px 0 8px; }
+  .cuadricula { display: grid; grid-template-columns: 110px repeat(6, 1fr); gap: 6px; align-items: center; }
+  .cab { color: var(--suave); font-size: 12px; text-align: center; }
+  .rotulo { font-weight: 600; font-size: 12px; }
+  .celda { background: var(--panel); border: 1px solid var(--linea); border-radius: 8px; padding: 4px; text-align: center; }
+  .celda svg { max-width: 100%; height: auto; }
+  .fila { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .insignias { display: flex; gap: 14px; flex-wrap: wrap; color: var(--tinta); }
+  #escena, #anim { width: 100%; max-width: 960px; display: block; border: 1px solid var(--linea); border-radius: 8px; }
+  button { font: inherit; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<h1>Astronauta: ocho estilos y seis estados</h1>
+<p><button id="tema" type="button">Alternar fondo claro y oscuro</button></p>
+
+<div id="cuadricula" class="cuadricula"></div>
+
+<h2>Legibilidad a 48 px y a 200 px</h2>
+<div id="tamanos" class="fila"></div>
+
+<h2>Insignias</h2>
+<div id="insignias" class="insignias"></div>
+
+<h2>Lienzo 2D animado (balanceo y ondas)</h2>
+<canvas id="anim" width="960" height="190"></canvas>
+
+<h2>Escena 3D (los ocho cambian de estado con el tiempo)</h2>
+<canvas id="escena" width="960" height="360"></canvas>
+
+<script src="modulos/estilos.js"></script>
+<script src="modulos/astronauta.js"></script>
+<script src="vendor/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const OB = window.OB, A = OB.astronauta;
+  const estilos = OB.estilos.ids.map((id) => OB.estilos.tabla[id]);
+  const BASE = { viva: true, emite: 0, refugio: false, accion: "" };
+  const ESTADOS = [
+    ["viva", Object.assign({}, BASE, { emite: 1 })],
+    ["comparte", Object.assign({}, BASE, { emite: 2, accion: "compartir" })],
+    ["miente", Object.assign({}, BASE, { accion: "mentir" })],
+    ["ataca", Object.assign({}, BASE, { accion: "atacar" })],
+    ["refugio", Object.assign({}, BASE, { refugio: true, accion: "refugiarse" })],
+    ["muerta", Object.assign({}, BASE, { viva: false })],
+  ];
+
+  // Cuadrícula de estilos por estados.
+  const cuad = document.getElementById("cuadricula");
+  let html = "<div></div>" + ESTADOS.map((e) => '<div class="cab">' + e[0] + "</div>").join("");
+  for (const e of estilos) {
+    html += '<div class="rotulo">' + e.nombre + "</div>";
+    for (const est of ESTADOS) html += '<div class="celda">' + A.svg(e, est[1], 140) + "</div>";
+  }
+  cuad.innerHTML = html;
+
+  // Tamaños pequeño y grande.
+  document.getElementById("tamanos").innerHTML = estilos.map((e) =>
+    '<div class="celda">' + A.svg(e, BASE, 48) + "</div>").join("") +
+    estilos.slice(0, 3).map((e) => '<div class="celda">' + A.svg(e, ESTADOS[1][1], 200) + "</div>").join("");
+
+  document.getElementById("insignias").innerHTML = estilos.map((e) =>
+    "<span>" + A.insignia(e.insignia, 40) + "</span>").join("");
+
+  document.getElementById("tema").addEventListener("click", () => document.body.classList.toggle("claro"));
+
+  // Lienzo 2D animado.
+  const c2 = document.getElementById("anim"), x2 = c2.getContext("2d");
+  function dibujar2d(ms) {
+    const t = ms / 1000;
+    x2.clearRect(0, 0, c2.width, c2.height);
+    estilos.forEach((e, i) => {
+      const est = ESTADOS[Math.floor(t / 2 + i) % ESTADOS.length][1];
+      A.canvas(x2, e, est, 70 + i * 117, 175, 150, t);
+    });
+    requestAnimationFrame(dibujar2d);
+  }
+  requestAnimationFrame(dibujar2d);
+
+  // Escena 3D.
+  const cv = document.getElementById("escena");
+  const render = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  render.setSize(cv.width, cv.height, false);
+  const esc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(35, cv.width / cv.height, 0.1, 50);
+  cam.position.set(0, 0.55, 3.1);
+  cam.lookAt(0, 0.28, 0);
+  esc.add(new THREE.HemisphereLight(0xffffff, 0x334455, 0.9));
+  const sol = new THREE.DirectionalLight(0xffffff, 0.8);
+  sol.position.set(2, 3, 4);
+  esc.add(sol);
+  const astros = estilos.map((e, i) => {
+    const g = A.three(THREE, e);
+    g.position.x = (i - 3.5) * 0.52;
+    esc.add(g);
+    return g;
+  });
+  function dibujar3d(ms) {
+    const t = ms / 1000;
+    astros.forEach((g, i) => g.userData.actualizar(ESTADOS[Math.floor(t / 2 + i) % ESTADOS.length][1], t));
+    render.render(esc, cam);
+    requestAnimationFrame(dibujar3d);
+  }
+  requestAnimationFrame(dibujar3d);
+})();
+</script>
+</body>
+</html>

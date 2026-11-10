@@ -409,6 +409,365 @@ error estándar. "Aporte" es coop_real con canal menos la mejor de ignorar y sol
   hoy ninguna red usa el canal. Las señales costosas siguen sin implementar, así que H3
   queda pendiente.
 
+## Diagrama de regímenes λ por c (radio 0.45)
+
+Generado con `analysis.phase_diagram.plot_phase_diagram` sobre la rejilla
+`uv run python -m train.pagos_rejilla --out-dir runs/pagos_r0.45 --set env.detection_growth=0.05
+--set env.anomaly.radius=0.45` (3 seeds, 200 episodios por pareja). Figuras:
+`docs/assets/diagrama_fases_r045.png` y `docs/assets/masas_criticas_r045.png`.
+
+- En las nueve celdas hay tres vértices estables (solo, coop_real, ataque_solo): es un juego de
+  coordinación en todas, no de dominio.
+- El régimen con la cuenca más grande pasa de ataque_solo con λ = 0.25 a coop_real con λ ≥ 0.5,
+  en las tres velocidades de señal. La frontera cae entre 0.25 y 0.5 y no depende de c en esta
+  rejilla, así que no muestra el efecto del retraso que predice H2.
+- Salvedad: la cuenca depende de que una mezcla inicial uniforme incluye muchos atacantes (ver el
+  Hallazgo 5), por eso las masas críticas son más informativas que el color. Son estrategias
+  fijas, no redes entrenadas, y la rejilla tiene solo tres valores por eje.
+
+## Entrenamiento con cambios de optimizador (7 de noviembre de 2026)
+
+Motivo: las redes de A-09 e I-03 no igualaban a ignorar ni usaban el canal. Se revisó el
+optimizador y se encontraron tres causas probables: cada época daba un solo paso de gradiente
+sobre todo el lote (unos 2,500 pasos en total), el recorte global de gradiente de 0.5 convivía
+con un crítico de escala grande, y la entropía fija de 0.01 no exploraba. Se añadieron tres
+opciones, todas neutras por defecto y sin tocar el entorno ni la recompensa del juego:
+`train.num_minibatches`, `train.reward_scale` (solo escala la señal del optimizador) y
+`train.ent_coef_final` (entropía decreciente). Config: `configs/costo_ignorar_optim.yaml`
+(radio 0.45, λ = 0.5, 2 civilizaciones, 8 minibatches, `reward_scale` 0.2, entropía de 0.05 a
+0.005, `max_grad_norm` 1.0, 10.5 M pasos).
+
+Kaggle, GPU T4, 5 seeds, 400 episodios, evaluación con la seed 100. Los tres cambios se probaron
+juntos, así que no se puede atribuir la mejora a uno solo.
+
+| seed | muestreo: retorno (superv.) | muertes por ataque | greedy: retorno (superv.) | ataques en greedy |
+|---|---|---|---|---|
+| 0 | +2.594 (0.419) | 0.343 | +5.611 (0.769) | 0.00 |
+| 1 | +2.309 (0.389) | 0.419 | +4.962 (0.692) | 0.02 |
+| 2 | +2.452 (0.421) | 0.400 | +5.738 (0.855) | 0.02 |
+| 3 | +2.364 (0.414) | 0.419 | +5.760 (0.840) | 0.00 |
+| 4 | +2.206 (0.380) | 0.386 | +5.375 (0.792) | 0.08 |
+| media | +2.39 (0.405) | 0.393 | +5.49 (0.790) | |
+
+Referencias del mismo mundo: red anterior (muestreo) +1.89, ignorar +2.77 (0.36), solo +3.71
+(0.47), coop_real +6.94 (0.86), oráculo +8.71.
+
+- Las cinco seeds mejoran la red anterior y en greedy las cinco superan a ignorar y a solo y
+  quedan entre solo y coop_real. Antes la mitad de las seeds quedaba atorada; aquí no.
+- **El canal sigue sin usarse.** Transmitir y compartir suman cerca de 0.4% de las acciones. La
+  ganancia sobre solo no viene de comunicar y no se identificó de dónde viene (la red refugia 14%
+  a 20% del tiempo; una hipótesis es que aprende el ritmo de los estallidos con `since_burst`,
+  sin verificar). H2 sigue sin evidencia a favor ni en contra con agentes entrenados.
+- Con muestreo el retorno sigue lejos de greedy por un solo motivo, el ataque (ver abajo).
+- Muestra pequeña, una sola config y un solo mundo. La comparación es contra políticas fijas
+  medidas con 3 seeds.
+
+## Ablaciones, evolución y población (8 de noviembre de 2026)
+
+Kaggle, 2 T4 en paralelo, 5 seeds por configuración y 400 episodios. Referencia con los tres
+cambios de optimizador: +5.49 en greedy y +2.39 por muestreo.
+
+| trabajo | greedy | muestreo | P(algún ataque tras el contacto), muestreo |
+|---|---|---|---|
+| sin minibatches | +3.69 [+2.92, +4.74] | +2.67 | 0.52 |
+| sin escala de recompensa | +4.26 [+3.47, +4.87] | +2.05 | 0.94 |
+| sin entropía alta decayente | +5.70 [+4.64, +6.28] | +2.59 | 0.94 |
+| entropía final 0.0005 | +5.62 [+4.91, +5.98] | +2.66 | 0.94 |
+| autojuego con snapshots | +5.74 [+4.71, +6.09] | +2.54 | 0.94 |
+| población mixta (recíproco, coop_real, ataque, solo, ignorar, snapshots) | +5.79 [+5.52, +6.15] | +2.61 | 0.93 |
+| población con socio recíproco | +5.81 [+5.66, +5.99] | +2.73 | 0.91 |
+| currículo: λ = 1.0 y luego λ = 0.5 con población mixta | +6.49 [+6.08, +6.73] | +2.47 | 0.98 |
+
+- Los minibatches y la escala de recompensa son los que mejoran; la entropía decreciente no hace
+  falta. El rango entre seeds de los trabajos de +5 a +6 se solapa: sus diferencias no son
+  concluyentes. Las del currículo (+6.49 contra +5.79 de la población mixta sin currículo) tienen
+  rangos que no se tocan, pero con 5 seeds sigue siendo una sola configuración.
+- **La cola de ataque no depende de la entropía.** Con entropía final de 0.0005 la probabilidad de
+  algún ataque tras el contacto sigue en 0.94. Es conducta aprendida con muestreo y desaparece
+  en greedy. Una explicación sin probar: atacar cuesta poco a quien ataca y el daño lo recibe la
+  otra copia, así que el gradiente para quitarlo es débil.
+- **El canal no se usa en ninguna corrida.** Con el canal apagado o los mensajes barajados el
+  retorno cambia menos de 0.15 en todos los checkpoints, también en los entrenados con un socio
+  recíproco.
+- **Evolución (seed 0, 16 snapshots, `docs/assets/evolucion_aprendizaje.png`).** Al inicio 14% a
+  20% de las acciones son transmitir o compartir, pero apagar el canal no cambia nada: es
+  exploración. Con el entrenamiento cae a 0.2%. En greedy el retorno sube de +2.95 a +5.89 y
+  con muestreo la probabilidad de algún ataque tras el contacto sube de 0.41 a 0.93.
+- **Matriz de cruce** (`train.cruce`, 200 episodios). Las redes greedy rinden casi lo mismo contra
+  `coop_real`, `recip`, `solo` e `ignorar` (la mejor, del currículo, +6.66 a +6.85) y solo se
+  hunden contra `ataque_solo` (+2.4 a +2.9). Juegan solas, y la mejor se acerca a la pareja
+  `coop_real` (+7.04). Frente a un buen jugador solitario el aporte de cooperar casi desaparece,
+  porque los +3 de cooperar eran contra la heurística `solo` (+3.7 a +4.3).
+- Una red de la población con snapshots (seed 0) ataca a `coop_real` y a `recip` en 19% y 17% de
+  los episodios con greedy y nunca a `solo` ni a `ignorar`. Es una sola red y no se ha repetido.
+- **Estrategia recíproca** (`recip` en `train.valor_cooperacion`): ofrece 2 mensajes y sigue
+  compartiendo solo con quien ya le envió algo. Con λ = 0.5 y c = 0.22 rinde +7.12 contra sí misma;
+  contra ella aprovecharse sin enviar (oyente) da +6.93 y compartir +7.20. El incentivo a
+  responder es de unos +0.3.
+
+**Ruido de la medición y refugio (8 de noviembre de 2026, 3 seeds por celda, 100 episodios).**
+Se entrenó la red junto a un socio pasivo (techo individual) y en población mixta con
+`env.anomaly.noise_std` en {0.1, 0.3, 0.6}. Retorno en greedy contra un socio pasivo y de las
+políticas fijas:
+
+| ruido | red entrenada sola | red de la población | pareja `coop_real` | `solo` (heurística) |
+|---|---|---|---|---|
+| 0.1 | +6.48 | +5.98 | +6.99 | +4.38 |
+| 0.3 | +6.49 | +6.18 | +6.29 | +4.29 |
+| 0.6 | +6.55 | +5.95 | +5.34 | +3.98 |
+
+- Más ruido empeora a las políticas fijas (la pareja `coop_real` pierde 1.65 de 0.1 a 0.6) y no a
+  la red, que a 0.6 supera a la pareja en 1.2. La ventaja de cooperar sobre `solo` baja de +3.1 a
+  +1.6 en las políticas fijas. La hipótesis de que más ruido hace necesaria la cooperación no se
+  sostiene.
+- **La red se refugia sin saber dónde cae la zona.** Con la red de la seed 0 en greedy, 60
+  episodios, en el paso del estallido se refugia con probabilidad 0.93 estando dentro de la zona
+  y 0.95 estando fuera (597 y 524 casos); el refugio ocupa 18% de las acciones y 13% fuera de los
+  estallidos. La observación `since_burst` es pública y sin ruido, y con refugio barato
+  (`cost_ref` 0.02) basta refugiarse al ritmo de los estallidos. Con eso un agente solo se
+  protege sin información que otro pudiera aportar, y el canal no tiene nada que comunicar.
+  Es la explicación que mejor encaja con los datos, y se prueba con un refugio caro (siguiente
+  experimento: `cost_ref` en {0.1, 0.25, 0.5} con ruido 0.3).
+- Opciones de diseño que quedan a decisión del equipo: encarecer el refugio, quitar o ensuciar
+  `since_burst`, o acortar el refugio. Cambian la física del juego, no la recompensa.
+
+**Refugio caro (8 de noviembre de 2026, ruido 0.3, 5 seeds por trabajo, 400 episodios).**
+Retorno en greedy de las redes y de las políticas fijas (3 seeds) según `env.cost_ref`:
+
+| `cost_ref` | red sola | red de la población | pareja `coop_real` | `solo` (heurística) |
+|---|---|---|---|---|
+| 0.02 (defecto) | +6.49 | +6.18 | +6.29 | +4.29 |
+| 0.1 | +3.48 | +3.42 | +6.02 | +3.75 |
+| 0.25 | +2.92 | +2.93 | +5.83 | +3.74 |
+| 0.5 | +2.92 | +2.92 | +4.82 | +3.72 |
+
+- Con el refugio encarecido las redes colapsan a un valor igual al de ignorar (+2.99) y quedan
+  por debajo hasta de la heurística `solo`. La matriz de cruce lo confirma: contra cualquier socio
+  rinden lo mismo (+2.95 con `cost_ref` 0.5, las tres seeds). El canal sigue sin usarse (apagarlo o
+  barajarlo cambia menos de 0.1).
+- En el mismo mundo la pareja `coop_real` rinde +4.8 a +6.0, es decir, 2 a 3 puntos más que las
+  redes. Cooperar sí vale en un mundo con refugio caro; las redes no lo descubren, ni solas ni con
+  población mixta con socios recíprocos. Es el problema de descubrimiento que se sospechaba al
+  principio, ahora con un margen grande para cooperar.
+- Esto confirma por el lado contrario la explicación del refugio barato: con `cost_ref` 0.02 la
+  red se protege sin información ajena y no necesita cooperar; con refugio caro cooperar rinde,
+  pero el entrenamiento no encuentra el protocolo.
+- Siguiente prueba (kernel v7): currículo del costo del refugio (0.02, 0.1, 0.25, 0.5) partiendo
+  de los pesos de la etapa anterior, y un entrenamiento cinco veces más largo con `cost_ref` 0.1.
+
+**Imitación previa de `coop_real` (9 de noviembre de 2026, `cost_ref` 0.25, ruido 0.3, una seed).**
+Se clonó a `coop_real` y `recip` jugando en pareja (`train.imitar`: entropía cruzada sobre las
+acciones y regresión del valor, 256 episodios) y se corrigió con DAgger (4 rondas, la red juega y
+el experto etiqueta los estados que visita; 768 episodios al final). No cambia el entorno ni la
+recompensa. Evaluación greedy, 100 episodios:
+
+| red | retorno | superv. | canal apagado | contra `coop_real` | `coop_real` contra ella |
+|---|---|---|---|---|---|
+| clonada sin DAgger | +3.82 | 0.50 | +2.95 | +3.77 | +5.59 |
+| con DAgger | +4.09 | 0.54 | +3.41 | +4.15 | +5.71 |
+| con DAgger y pesos por rareza | +4.19 | 0.62 | +3.36 | +4.28 | +5.71 |
+| anterior, ajustada con RL (0.8 M pasos) | +4.23 | 0.57 | +3.92 | +4.45 | +5.59 |
+
+Referencias del mismo mundo: pareja `coop_real` +6.01, `recip` +5.91, `solo` +4.27, ignorar +2.97
+y redes de RL desde cero +2.9.
+
+- Las redes clonadas salen del colapso (+2.9) y son las primeras en depender del canal: apagarlo
+  baja el retorno 0.3 a 0.9. Con la estrategia `coop_real` de pareja, ella rinde +5.6 a +5.7
+  (contra +3.8 con un socio `solo`), es decir, la red le aporta información útil.
+- Ninguna alcanza a `coop_real` (68% a 70% de su retorno; umbral previsto 85%). La precisión por
+  paso es de 98%, pero lo que importa son pocos pasos críticos (refugiarse en el estallido).
+  DAgger y los pesos por rareza mejoran poco (+0.3 a +0.4).
+- El ajuste fino con RL desde la red clonada no destruye la cooperación (compartir cae de 11% a
+  2% de las acciones, el canal sigue importando) y sube el retorno a +4.2 con 0.8 M pasos.
+
+**Coaliciones sin reentrenar (H4, 9 de noviembre de 2026).** La red clonada y afinada con 2
+civilizaciones (`cost_ref` 0.25, ruido 0.3, una seed) se evaluó con N = 2, 4, 6 y 8 civilizaciones
+sin reentrenar (sus pesos no dependen de N), 12 episodios por tamaño (`train.coaliciones`,
+`analysis.coaliciones`). Los vínculos se calcularon dos veces: con las señales recibidas de cualquier tipo
+(`info_receptions`, que incluye las emisiones ambientales de crecer) y con los mensajes explícitos
+(compartir y símbolos, a partir de `message_t`). Dos civilizaciones quedan vinculadas si se
+recibieron en ambos sentidos y suman al menos 3. Con ese umbral las dos versiones dan las mismas
+comunidades.
+
+| N | supervivencia | mensajes por episodio | comunidades | tamaño de la mayor | mensajes dentro de la comunidad |
+|---|---|---|---|---|---|
+| 2 | 0.58 | 7.0 | 1.2 | 1.8 | 0.83 |
+| 4 | 0.56 | 13.7 | 1.1 | 3.9 | 1.00 |
+| 6 | 0.58 | 18.8 | 1.2 | 5.8 | 1.00 |
+| 8 | 0.46 | 23.8 | 1.4 | 7.6 | 1.00 |
+
+- **La conclusión depende del umbral.** Con 3 mensajes sale una sola comunidad; con 6 se
+  fragmenta en unas 4.5 a 4.9 comunidades, casi todas de una sola civilización (N = 8: la mayor
+  tiene 3.9; N = 6 de `n6`: 2.4); con 10 todas quedan aisladas. En ningún umbral aparecen grupos
+  estables que callen ante los demás. Sin un modelo nulo (comunicación al azar con la misma
+  geometría) tampoco puedo atribuir la estructura que sí hay a algo distinto de la distancia y la
+  velocidad de la señal.
+- No aparecen grupos separados: casi todas las civilizaciones quedan en una sola comunidad que
+  crece con N y los mensajes crecen casi linealmente. H4 predice grupos que comparten entre sí y
+  callan ante los demás; aquí la red comparte con todas. La evidencia no apoya H4, con un
+  umbral de vínculo bajo y una red que no se entrenó con N grande.
+- Es una sola seed, sin entrenamiento a N grande; el entrenamiento con N = 6 queda en la
+  corrida final de Kaggle.
+
+### Corrida final: imitación, ajuste fino y barrido λ por c con redes (9 de noviembre de 2026)
+
+Kaggle, 2 T4, mundo de refugio caro (`cost_ref` 0.25, ruido 0.3, radio 0.45), 5 seeds por celda,
+200 episodios, evaluación greedy. Cada red parte de la clonada de `coop_real` con DAgger
+(`train.imitar`, pesos por rareza 0.5) y se afina 3.2 M pasos con RL y población mixta
+(`train.init_from`). Control: la misma población con el mismo presupuesto desde cero.
+
+**Control en la celda central (λ = 0.5, c = 0.22).** Desde cero la red colapsa a +2.84 (las cinco
+seeds iguales, rango +2.84 a +2.84, cerca de ignorar, +2.97). Con imitación y ajuste fino da +4.37
+[+4.26, +4.46] y supera a la heurística `solo` (+4.24). Es la mejora que la imitación aporta y la
+única forma encontrada de salir del colapso con refugio caro.
+
+**Barrido (`docs/assets/barrido_entrenado.png`, `analysis.barrido_entrenado`):**
+
+| λ | c | retorno de la red | caída al apagar el canal | pareja `coop_real` | `solo` | red / `coop_real` |
+|---|---|---|---|---|---|---|
+| 0.25 | 0.05 | +5.92 | +0.03 | +6.74 | +5.97 | 0.94 |
+| 0.25 | 0.22 | +5.78 | +0.10 | +6.99 | +5.97 | 0.89 |
+| 0.25 | 1.0 | +5.73 | +0.81 | +6.99 | +5.97 | 0.87 |
+| 0.5 | 0.05 | +4.40 | +0.08 | +5.54 | +4.24 | 0.86 |
+| 0.5 | 0.22 | +4.37 | +0.16 | +5.99 | +4.24 | 0.78 |
+| 0.5 | 1.0 | +4.31 | +0.39 | +6.04 | +4.24 | 0.78 |
+| 1.0 | 0.05 | +2.82 | +0.07 | +3.97 | +2.85 | 0.78 |
+| 1.0 | 0.22 | +2.79 | -0.01 | +4.94 | +2.85 | 0.64 |
+| 1.0 | 1.0 | +2.74 | +0.02 | +5.02 | +2.85 | 0.61 |
+
+(El retorno es greedy; las columnas de pareja y `solo` y el cociente vienen de la matriz de cruce,
+`train.cruce`, 200 episodios y 3 seeds de la red.)
+
+- El retorno cae con la letalidad y casi no cambia con c.
+- **La dependencia del canal crece con la velocidad de la señal** a λ = 0.25 y 0.5 (apagarlo cuesta
+  0.03, 0.10 y 0.81, y 0.08, 0.16 y 0.39). Con señales lentas la red casi no usa el canal. Es
+  compatible con H2 (más retraso, menos comunicación), pero son 3 valores de c y una red que parte
+  de una imitación, así que no se llama frontera de fase.
+- **A λ = 1.0 no usa el canal en ninguna celda** y llega solo a 61% a 78% de la pareja: no
+  aprovecha el valor de cooperar donde es mayor (+5.0 contra +2.85).
+- En las 9 celdas la red supera a la heurística `solo` y en ninguna llega a `coop_real`.
+- **H5:** sin bimodalidad. Dentro de cada celda las seeds quedan en rangos estrechos. El caso con
+  más dispersión es λ = 0.5, c = 1.0 (caída del canal de +0.03 a +0.71, continuo). Con la
+  imitación como punto de partida la varianza entre seeds es baja por construcción, así que
+  tampoco descarta H5.
+- **Juego empírico por celda** (`analysis.juego_empirico` sobre el cruce): ganan `coop_real` y
+  `recip` (58% a 68% y 26% a 31% de las poblaciones iniciales) y las redes en ninguna. Cooperar es
+  estable y la red solo lo aproxima.
+
+**Explotadores** (λ = 0.5, c = 0.22, 3 seeds, 100 episodios). Cada explotador parte de su red
+principal y entrena 3.2 M pasos contra ella congelada, sin más objetivo que su propio retorno.
+
+| seed | explotador contra la principal | principal contra sí misma | principal contra el explotador |
+|---|---|---|---|
+| 0 | +4.79 | +4.61 | +4.35 |
+| 1 | +4.61 | +4.80 | +4.66 |
+| 2 | +4.88 | +4.72 | +4.55 |
+
+El explotador gana como mucho unas 0.2 y la principal pierde 0.15 a 0.26; nadie dispara. Las redes
+no son frágiles ante un adversario que se les ajusta, con un presupuesto de entrenamiento pequeño.
+
+**N = 6 entrenada (H4, kernel v9).** Cinco seeds entrenaron 3.2 M pasos con 6 civilizaciones,
+con socios solo snapshots y partiendo de la red clonada de la celda central. Greedy: +4.12
+[+3.96, +4.21] y apagar el canal da +4.12 (sin dependencia). Con 12 episodios de N = 6 por red
+(seeds 0 a 2) y el mismo umbral de vínculo (3 recepciones en ambos sentidos): supervivencia 0.65 a
+0.68, unos 17 mensajes por episodio, 1.2 comunidades, tamaño de la mayor 5.8 y 100% de los
+mensajes dentro de la comunidad. Es una sola comunidad que comparte con todas, igual que la red
+sin reentrenar: no aparecen coaliciones que callen ante los demás.
+
+### H3: engaño y señales costosas (9 de noviembre de 2026)
+
+Mecanismo (`env.deception`, `env.costly_signals`, `env.cost_verify`, desactivados por defecto): con
+engaño el último símbolo de transmitir fabrica una medición falsa (de una anomalía imaginaria) y la
+emite como un compartir sin verificar; con señales costosas el compartir verdadero cuesta
+`cost_verify` (0.06 contra 0.02) y lleva una etiqueta de verificado que la mentira no puede emitir.
+Estrategias fijas: `mentiroso` (como `coop_real`, pero fabricando) y `prudente` (como `coop_real`,
+pero solo acepta mensajes verificados). Retornos, λ = 0.5, c = 0.22, refugio caro, ruido 0.3,
+3 seeds, 200 episodios:
+
+| fila contra columna | sin señales costosas | con señales costosas |
+|---|---|---|
+| `coop_real` contra `coop_real` | +6.00 | +5.75 |
+| `coop_real` contra `mentiroso` | +3.97 | +3.82 |
+| `mentiroso` contra `coop_real` | +6.00 | +6.00 |
+| `prudente` contra `prudente` | +3.43 | +5.75 |
+| `prudente` contra `mentiroso` | +3.43 | +3.27 |
+| `mentiroso` contra `prudente` | +6.04 | +6.04 |
+| `solo` contra cualquiera | +3.63 | +3.63 |
+
+- **Sin señales costosas el engaño paga:** el mentiroso gana +6.00 contra `coop_real` y este +3.97, así
+  que el cooperador ingenuo es invadido. `prudente` no puede distinguir a nadie (no hay mensajes
+  verificados) y queda en +3.43, por debajo de `solo`.
+- **Con señales costosas `prudente` coopera consigo mismo** (+5.75) y no se contagia de las mentiras,
+  pero **no mejora a `coop_real` frente al mentiroso** (+3.27 contra +3.82) y **el mentiroso sigue
+  ganando** (+6.04 contra `prudente`): usa las mediciones verdaderas de quien comparte y devuelve
+  falsas. Verificar protege al receptor de la mentira, pero no impide el aprovechamiento.
+- La mentira por sí sola daña poco: `coop_real` contra el mentiroso rinde algo más que `solo`
+  (+3.97 contra +3.63), es decir, las mediciones falsas solo restan parte del beneficio de cooperar.
+- Lectura: con este mecanismo H3 (señales costosas reducen λ*) **no se sostiene**: el costo extra de
+  verificar baja el retorno de cooperar en 0.25 y no evita que el mentiroso explote. Lo que faltaría
+  es reciprocidad verificada (dejar de compartir con quien no verifica) y mentiras más dañinas que
+  una medición al azar. Son estrategias fijas, sin redes entrenadas.
+
+**Estimar N = 4 y 8 sin entrenar (9 de noviembre de 2026).** Retorno en greedy de dos redes por
+familia, evaluadas con distinto número de civilizaciones sin reentrenar (40 episodios, mundo de
+refugio caro, λ = 0.5, c = 0.22):
+
+| red | N = 2 | N = 4 | N = 6 | N = 8 |
+|---|---|---|---|---|
+| entrenada con 2 civilizaciones | +4.22 | +3.32 | +2.52 | +2.59 |
+| entrenada con 6 civilizaciones (`n6`) | +4.17 | +4.40 | +4.22 | +4.10 |
+
+Las redes de 2 civilizaciones pierden cerca de 40% de retorno a N = 6 y su supervivencia baja de
+0.58 a 0.45; `n6` queda entre +4.1 y +4.4 de 2 a 8 civilizaciones. Para N = 4 y 8 sirve `n6` como
+estimación, sin reentrenar, pero no hay una red entrenada con ese tamaño para medir el error de la
+aproximación, son 2 seeds por red y la densidad cambia con N, así que los retornos entre tamaños no
+son del todo comparables.
+
+Cómo se hizo: `train.resumen_corrida` (JSON por checkpoint), `analysis.resumen_lote` (tabla por
+trabajo), `analysis.evolucion` (gráfica) y `train.cruce` (matriz de cruce). La población y los
+socios están en `train.socios` y `train.selfplay`.
+
+## Por qué se matan cuando se conocen
+
+`train.diagnostico_ataque` separa los episodios con contacto y mide el ataque antes y después.
+Dos civilizaciones, 400 episodios.
+
+| Política | contacto | ataque por paso tras contacto | algún ataque dado contacto | ataque mutuo | muertes por ataque por civ. |
+|---|---|---|---|---|---|
+| aleatoria, λ = 0 | 1.00 | 0.022 | 1.00 | 0.50 | 0.67 |
+| aleatoria, radio 0.45 | 0.92 | 0.023 | 0.89 | 0.33 | 0.40 |
+| red, muestreo (5 seeds) | 0.73 a 0.82 | 0.012 a 0.021 | 0.92 a 0.97 | 0.20 a 0.26 | 0.34 a 0.54 |
+| red, greedy (seeds 0 a 2) | 0.74 a 0.83 | 0.000 a 0.0001 | 0.00 a 0.02 | 0.00 | 0.00 a 0.01 |
+
+1. **Nunca se ataca antes del contacto** (0.000 en todas las filas): atacar exige conocer al otro.
+2. **No es una decisión, es una cola de probabilidad.** La red muestreada pone cerca de 1% de
+   probabilidad al ataque, pero con unos 150 pasos tras el contacto eso da casi un disparo por
+   episodio (92% a 97% tienen alguno). En greedy ese 1% desaparece y los ataques bajan a cero.
+   Con `p_kill` 0.75 un disparo mata con alta probabilidad.
+3. **Los mensajes no coordinan nada.** Con la red muestreada solo 5% a 11% de los episodios con
+   contacto tienen un mensaje antes del primer disparo, y con la aleatoria 85% pero con
+   contenido sin significado. Un símbolo que cuesta igual decir verdad que mentir no compromete
+   a nadie: es la razón de H3, que no está implementada.
+4. **Estructura del juego.** Con λ = 0 y radio 0.25 el diagnóstico con políticas fijas ya mostró
+   que atacar primero es la mejor respuesta a un atacante y crecer a un crecedor, es decir, un
+   juego de coordinación con equilibrio de ataque mutuo (ver el Hallazgo 3 y el replicador).
+5. **Cautela.** Es el diagnóstico de la política aleatoria y de cinco redes, sin intervención.
+   No se probó causalmente, por ejemplo, entrenando con entropía final menor o con un impuesto
+   al ataque, que además violaría la regla de no imposición.
+
+Lectura práctica: informar el retorno greedy y el muestreado, y no presentar el muestreado
+como incapacidad de aprender a no atacar.
+
+## Alcance de la entrega y trabajo futuro
+
+| Hipótesis | Estado | Razón |
+|---|---|---|
+| H1 | Evidencia a favor | Políticas fijas y redes: apagar el canal con λ = 0 no cambia nada |
+| H2 | Parcial, con redes | Barrido λ×c de 9 celdas con redes entrenadas (imitación y RL, 5 seeds): la dependencia del canal crece con la velocidad de la señal (a λ = 0.25, de 0.03 a 0.81), pero con 3 valores de c, una sola configuración de mundo (refugio caro) y redes que parten de una imitación; no es una frontera de fase |
+| H3 | Sin apoyo (políticas fijas) | Engaño y señales costosas implementados (`env.deception`, `env.costly_signals`); con ellos `prudente` coopera consigo misma pero el mentiroso sigue ganando y verificar cuesta 0.25 de retorno; sin redes entrenadas |
+| H4 | Sin apoyo | Redes entrenadas con N = 6 (5 seeds, +4.12 en greedy) y la red de 2 civilizaciones con N = 2 a 8 forman una sola comunidad que comparte con todas, sin grupos separados; umbral de vínculo bajo y 12 episodios por red |
+| H5 | Sin evidencia | Sin bimodalidad entre seeds en ninguna celda del barrido; la imitación como punto de partida reduce la varianza entre seeds, así que no la descarta |
+
 ## Principio de diseño
 
 1. Las reglas del juego son decisión nuestra. Los comportamientos que aparezcan (cooperar,
