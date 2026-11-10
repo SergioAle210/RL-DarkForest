@@ -4,7 +4,16 @@ Proyecto de aprendizaje por refuerzo multiagente en JAX sobre un juego parcialme
 observable del bosque oscuro. La especificación plantea las hipótesis H1–H5 sin imponer
 cooperación ni agresión mediante recompensas adicionales.
 
+**Video explicativo:** [Ver la presentación y demostración del proyecto en YouTube](https://youtu.be/7tVnPCPGaIE).
+
 **Presentación: 9 al 13 de noviembre de 2026. Cierre de materiales: 8 de noviembre.**
+
+## Redes entrenadas para la demo
+
+Las redes entrenadas no están en el repositorio. Descarga `checkpoints-demo.zip` de la
+carpeta `runs` del [Drive del equipo](https://drive.google.com/drive/folders/1fOqBbqDN9C9BAwWEI-0gGk0UsBofaRQI?usp=drive_link)
+y descomprímelo en la carpeta que contiene al repositorio, de modo que `kout_demo/` quede
+al lado de `RL-DarkForest/`. Sin el ZIP, la demo funciona solo con las estrategias fijas.
 
 ## Ejecutar episodios y entrenar una primera GRU
 
